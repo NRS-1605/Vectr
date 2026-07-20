@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="28dp">
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.12" android:text="@string/files_title" android:textColor="@color/accent_amber" android:textSize="20sp" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/files_subtitle" android:textColor="@color/text_muted" android:textSize="13sp" />
+    <Button android:id="@+id/files_upload" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginTop="18dp" android:text="@string/upload_file" />
+    <ProgressBar android:id="@+id/files_upload_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:max="100" android:visibility="gone" />
+    <TextView android:id="@+id/files_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/text_muted" android:textSize="13sp" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="26dp" android:letterSpacing="0.08" android:text="@string/available_files" android:textColor="@color/text_primary" android:textSize="15sp" />
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="8dp" android:layout_weight="1">
+        <LinearLayout android:id="@+id/files_list" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+    </ScrollView>
+</LinearLayout>

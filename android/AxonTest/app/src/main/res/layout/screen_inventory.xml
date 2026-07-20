@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/background_graphite">
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_home_hero" android:orientation="vertical" android:padding="20dp">
+      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.13" android:text="SMART INVENTORY" android:textColor="@color/text_primary" android:textSize="20sp" android:textStyle="bold"/>
+      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="Food and medicine, tracked before expiry." android:textColor="@color/text_muted" android:textSize="12sp"/>
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_home_status" android:orientation="vertical" android:padding="16dp">
+      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ADD ITEM" android:textColor="@color/accent_amber" android:textSize="12sp" android:textStyle="bold"/>
+      <EditText android:id="@+id/inventory_name" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="Product or medicine name" android:paddingHorizontal="12dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted"/>
+      <EditText android:id="@+id/inventory_quantity" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp" android:background="@drawable/bg_input" android:hint="Quantity (for example: 2)" android:inputType="number" android:paddingHorizontal="12dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted"/>
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
+        <EditText android:id="@+id/inventory_mfg" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:background="@drawable/bg_input" android:hint="MFG YYYY-MM-DD" android:inputType="date" android:paddingHorizontal="10dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" android:textSize="11sp"/>
+        <EditText android:id="@+id/inventory_expiry" android:layout_width="0dp" android:layout_height="48dp" android:layout_marginStart="8dp" android:layout_weight="1" android:background="@drawable/bg_input" android:hint="EXP YYYY-MM-DD" android:inputType="date" android:paddingHorizontal="10dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" android:textSize="11sp"/>
+      </LinearLayout>
+      <ImageView android:id="@+id/inventory_photo_preview" android:layout_width="76dp" android:layout_height="76dp" android:layout_marginTop="10dp" android:contentDescription="Selected item photo" android:scaleType="centerCrop" android:visibility="gone"/>
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp">
+        <Button android:id="@+id/inventory_photo" android:layout_width="wrap_content" android:layout_height="44dp" android:text="ADD PHOTO"/>
+        <Button android:id="@+id/inventory_save" android:layout_width="0dp" android:layout_height="44dp" android:layout_marginStart="8dp" android:layout_weight="1" android:background="@drawable/bg_action" android:text="SAVE ITEM" android:textColor="#1A0A03"/>
+      </LinearLayout>
+      <TextView android:id="@+id/inventory_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/text_muted" android:textSize="12sp"/>
+    </LinearLayout>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:letterSpacing="0.12" android:text="YOUR ITEMS · SOONEST EXPIRY FIRST" android:textColor="@color/text_muted" android:textSize="11sp"/>
+    <LinearLayout android:id="@+id/inventory_list" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="vertical"/>
+  </LinearLayout>
+</ScrollView>

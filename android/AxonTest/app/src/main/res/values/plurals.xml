@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="pending_sync_items">
+        <item quantity="one">%d item pending sync</item>
+        <item quantity="other">%d items pending sync</item>
+    </plurals>
+</resources>

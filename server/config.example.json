@@ -1,0 +1,12 @@
+{
+  "berryEconomy": {
+    "voyageRewards": { "coastal": 600, "open_waters": 1500, "uncharted": 3000 },
+    "abandonPenaltyPercent": 20,
+    "featureCosts": { "touchpad": 150, "macros": 100, "files": 80, "telemetry": 50, "news": 50 },
+    "dailyFreeAllowance": 3,
+    "customMarginalRatePerMinute": 40,
+    "customMinimumDurationSeconds": 5400
+  },
+  "feeds": [],
+  "macros": []
+}

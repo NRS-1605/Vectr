@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="macro_button_height">116dp</dimen>
+    <dimen name="macro_grid_gap">8dp</dimen>
+</resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_graphite">#0B0507</color>
+    <color name="surface_graphite">#180A0E</color>
+    <color name="surface_input">#210B10</color>
+    <color name="panel2">#210B10</color>
+    <color name="panel3">#260C12</color>
+    <color name="accent_amber">#E5484D</color>
+    <color name="accent_dim">#B9373C</color>
+    <color name="accent_soft">#24E5484D</color>
+    <color name="text_primary">#F2E8DC</color>
+    <color name="text_muted">#A3927E</color>
+    <color name="text_faint">#6E6053</color>
+    <color name="outline_graphite">#14F2E8DC</color>
+    <color name="glass_dark">#180A0E</color>
+    <color name="glass_outline_soft">#14F2E8DC</color>
+    <color name="glass_highlight">#14F2E8DC</color>
+    <color name="failure_muted_red">#E5484D</color>
+    <color name="ok">#5FBF77</color>
+</resources>
