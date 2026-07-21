@@ -1,10 +1,10 @@
 const express = require("express");
-const path = require("path");
 const { DatabaseSync } = require("node:sqlite");
 const { createMessage } = require("../../shared/message-contract");
 const { broadcastMessage } = require("../ws");
+const { databasePath } = require("../runtime-paths");
 
-const db = new DatabaseSync(path.join(__dirname, "..", "axon-core.sqlite"));
+const db = new DatabaseSync(databasePath);
 db.exec("CREATE TABLE IF NOT EXISTS todos (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, checked INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
 function listTodos() { return db.prepare("SELECT id, text, checked, created_at AS createdAt FROM todos ORDER BY id DESC").all().map((item) => ({ ...item, checked: Boolean(item.checked) })); }
 function broadcastTodos(wss) { const items = listTodos(); broadcastMessage(wss, createMessage("todos.update", { items }, "axon-core")); return items; }

@@ -1,9 +1,9 @@
 const fs = require("fs/promises");
-const path = require("path");
 const { DatabaseSync } = require("node:sqlite");
+const { configPath, databasePath } = require("./runtime-paths");
 
-const CONFIG_PATH = path.join(__dirname, "config.json");
-const DB_PATH = path.join(__dirname, "axon-core.sqlite");
+const CONFIG_PATH = configPath;
+const DB_PATH = databasePath;
 const DEFAULT = {
   voyageRewards: { coastal: 600, open_waters: 1500, uncharted: 3000 },
   abandonPenaltyPercent: 20,

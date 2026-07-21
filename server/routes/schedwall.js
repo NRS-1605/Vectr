@@ -1,11 +1,11 @@
 const express = require("express");
 const fs = require("fs/promises");
-const path = require("path");
 const crypto = require("crypto");
 const { broadcastMessage } = require("../ws");
 const { createMessage } = require("../../shared/message-contract");
+const { schedWallStatePath } = require("../runtime-paths");
 
-const STATE_PATH = path.join(__dirname, "..", "schedwall.json");
+const STATE_PATH = schedWallStatePath;
 const DEFAULT_STATE = { quote: "Si vis pacem, para bellum", template: [], overlay: [], checked: {} };
 
 function todayYmd() { return new Date().toISOString().slice(0, 10); }

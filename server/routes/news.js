@@ -1,10 +1,10 @@
 const express = require("express");
 const fs = require("fs/promises");
-const path = require("path");
 const Parser = require("rss-parser");
 const { gate } = require("./points");
+const { configPath } = require("../runtime-paths");
 
-const CONFIG_PATH = path.join(__dirname, "..", "config.json");
+const CONFIG_PATH = configPath;
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const parser = new Parser();
 let cachedNews = null;

@@ -84,6 +84,24 @@ The backend database is `server/axon-core.sqlite`. Editable settings are stored
 in `server/config.json`; use [server/config.example.json](server/config.example.json)
 as a reference for a clean default configuration.
 
+## Standalone distributions
+
+Build native, Node.js-free desktop executables for Linux x64 and Windows x64:
+
+```bash
+npm run build:dist
+```
+
+This produces `dist/vectr-core-linux` and `dist/vectr-core-win.exe`. The
+bundled core keeps its static admin pages inside the executable and stores all
+mutable state in `~/axon` (or `%USERPROFILE%\\axon` on Windows).
+
+Install the matching artifact with `./install.sh` on Linux or `./install.ps1`
+from PowerShell on Windows. The installers create the required data folders,
+install the executable for the current user, and print the admin URL. Windows
+may show SmartScreen for the unsigned executable; use **More info → Run
+anyway** only after verifying the download source.
+
 ## SchedWall
 
 SchedWall is integrated into the same VeCTR core—no second server or port is

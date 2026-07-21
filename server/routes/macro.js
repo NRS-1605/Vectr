@@ -1,12 +1,12 @@
 const express = require("express");
 const fs = require("fs/promises");
-const path = require("path");
 const { exec } = require("child_process");
 const { promisify } = require("util");
 const { input } = require("../platform");
+const { configPath } = require("../runtime-paths");
 
 const execAsync = promisify(exec);
-const CONFIG_PATH = path.join(__dirname, "..", "config.json");
+const CONFIG_PATH = configPath;
 const MACRO_IDS = Array.from({ length: 8 }, (_, index) => index + 1);
 
 function defaultMacros() {

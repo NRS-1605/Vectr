@@ -1,8 +1,8 @@
 const express = require("express");
 const fs = require("fs/promises");
-const path = require("path");
+const { configPath } = require("../runtime-paths");
 
-const CONFIG_PATH = path.join(__dirname, "..", "config.json");
+const CONFIG_PATH = configPath;
 const DEFAULT_CONFIG = { defaultMode: "local", localModel: process.env.MODEL_LOCAL || "llama3", cloudModel: process.env.MODEL_CLOUD || "gpt-4.1-mini" };
 
 async function readLlmConfig() {
