@@ -2,17 +2,14 @@
 # This is expected: select "More info" and then "Run anyway" after verifying the download source.
 
 $ErrorActionPreference = "Stop"
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Source = Join-Path $ScriptDir "dist\vectr-core-win.exe"
+$Repository = "NRS-1605/Vectr"
+$SourceUrl = if ($env:VECTR_BINARY_URL) { $env:VECTR_BINARY_URL } else { "https://github.com/$Repository/releases/latest/download/vectr-core-win.exe" }
 $InstallDir = Join-Path $env:LOCALAPPDATA "Vectr"
 $Target = Join-Path $InstallDir "vectr-core.exe"
 
-if (-not (Test-Path $Source)) {
-    throw "Missing $Source. Run npm run build:dist first."
-}
-
 New-Item -ItemType Directory -Force -Path $InstallDir, "$env:USERPROFILE\axon-inbox", "$env:USERPROFILE\axon\captures\notes\attachments", "$env:USERPROFILE\axon\files\incoming", "$env:USERPROFILE\axon\files\outgoing", "$env:USERPROFILE\axon\inventory\photos" | Out-Null
-Copy-Item -Force $Source $Target
+Write-Host "Downloading VeCTR core…"
+Invoke-WebRequest -Uri $SourceUrl -OutFile $Target
 
 $StartMenu = [Environment]::GetFolderPath("StartMenu")
 $ShortcutPath = Join-Path $StartMenu "Programs\Vectr Core.lnk"

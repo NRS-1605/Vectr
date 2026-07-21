@@ -84,23 +84,50 @@ The backend database is `server/axon-core.sqlite`. Editable settings are stored
 in `server/config.json`; use [server/config.example.json](server/config.example.json)
 as a reference for a clean default configuration.
 
-## Standalone distributions
+## Install without Node.js
 
-Build native, Node.js-free desktop executables for Linux x64 and Windows x64:
+End users only need the appropriate installer script. It downloads the matching
+binary from the [latest VeCTR release](https://github.com/NRS-1605/Vectr/releases/latest),
+installs it for the current user, and creates its data folders.
+
+### Linux x64
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NRS-1605/Vectr/main/install.sh | sh
+```
+
+The core installs to `~/.local/bin/vectr-core`. Ensure `~/.local/bin` is on
+your `PATH`, then run `vectr-core` and open `http://localhost:4101`.
+
+### Windows x64
+
+Download [install.ps1](https://raw.githubusercontent.com/NRS-1605/Vectr/main/install.ps1),
+then run it from PowerShell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\install.ps1
+```
+
+It installs to `%LOCALAPPDATA%\Vectr`, creates a **Vectr Core** Start Menu
+shortcut, and prints the admin URL. Windows SmartScreen may show an unsigned
+binary warning; use **More info → Run anyway** only after verifying the
+download source.
+
+## Building release artifacts
+
+For maintainers, build native, Node.js-free desktop executables for Linux x64
+and Windows x64:
 
 ```bash
 npm run build:dist
 ```
 
-This produces `dist/vectr-core-linux` and `dist/vectr-core-win.exe`. The
-bundled core keeps its static admin pages inside the executable and stores all
-mutable state in `~/axon` (or `%USERPROFILE%\\axon` on Windows).
-
-Install the matching artifact with `./install.sh` on Linux or `./install.ps1`
-from PowerShell on Windows. The installers create the required data folders,
-install the executable for the current user, and print the admin URL. Windows
-may show SmartScreen for the unsigned executable; use **More info → Run
-anyway** only after verifying the download source.
+This produces `dist/vectr-core-linux` and `dist/vectr-core-win.exe`. Upload
+both files to a GitHub Release with those exact names; the installers above use
+GitHub’s `releases/latest/download` endpoint. The bundled core keeps static
+admin pages inside the executable and stores mutable state in `~/axon` (or
+`%USERPROFILE%\\axon` on Windows).
 
 ## SchedWall
 
