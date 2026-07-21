@@ -16,7 +16,7 @@ data class InventoryItem(val id: String, val name: String, val quantity: Int, va
 object InventoryRepository {
     private val client = OkHttpClient()
     fun list(ok: (List<InventoryItem>) -> Unit, fail: (String) -> Unit) {
-        request(Request.Builder().url(DeviceWebSocket.apiUrl("/api/inventory")).build(), { raw ->
+        requestSafely({ Request.Builder().url(DeviceWebSocket.apiUrl("/api/inventory")).build() }, { raw ->
             val data = JSONArray(raw); ok((0 until data.length()).map { data.getJSONObject(it).let(::parse) })
         }, fail)
     }
@@ -28,15 +28,19 @@ object InventoryRepository {
                 val bytes = resolver.openInputStream(photo)?.use { it.readBytes() } ?: return fail("Could not read the selected photo")
                 form.addFormDataPart("photo", "item-photo.jpg", bytes.toRequestBody("image/jpeg".toMediaType()))
             }
-            request(Request.Builder().url(DeviceWebSocket.apiUrl("/api/inventory")).post(form.build()).build(), { ok(parse(JSONObject(it))) }, fail)
+            requestSafely({ Request.Builder().url(DeviceWebSocket.apiUrl("/api/inventory")).post(form.build()).build() }, { ok(parse(JSONObject(it))) }, fail)
         } catch (error: Exception) { fail(error.message ?: "Could not save inventory item") }
     }
-    fun delete(id: String, ok: () -> Unit, fail: (String) -> Unit) = request(Request.Builder().url(DeviceWebSocket.apiUrl("/api/inventory/$id")).delete().build(), { ok() }, fail)
+    fun delete(id: String, ok: () -> Unit, fail: (String) -> Unit) = requestSafely({ Request.Builder().url(DeviceWebSocket.apiUrl("/api/inventory/$id")).delete().build() }, { ok() }, fail)
     fun photo(url: String, ok: (Bitmap) -> Unit, fail: (String) -> Unit) {
-        client.newCall(Request.Builder().url(DeviceWebSocket.apiUrl(url)).build()).enqueue(object : Callback {
+        val request = try { Request.Builder().url(DeviceWebSocket.apiUrl(url)).build() } catch (error: Exception) { fail(error.message ?: "VeCTR core is not connected"); return }
+        client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) = fail(e.message ?: "Could not load photo")
             override fun onResponse(call: Call, response: Response) { response.use { result -> if (!result.isSuccessful) fail("Could not load photo") else result.body?.byteStream()?.use { stream -> BitmapFactory.decodeStream(stream)?.let(ok) ?: fail("Invalid photo") } ?: fail("Empty photo") } }
         })
+    }
+    private fun requestSafely(create: () -> Request, ok: (String) -> Unit, fail: (String) -> Unit) {
+        try { request(create(), ok, fail) } catch (error: Exception) { fail(error.message ?: "VeCTR core is not connected") }
     }
     private fun request(request: Request, ok: (String) -> Unit, fail: (String) -> Unit) = client.newCall(request).enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) = fail(e.message ?: "Request failed")

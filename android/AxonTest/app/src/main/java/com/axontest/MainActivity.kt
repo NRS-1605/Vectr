@@ -731,7 +731,13 @@ class MainActivity : ComponentActivity() {
             else updatePhotoPreview()
         }
         if (requestCode == FILE_PICK_REQUEST && resultCode == RESULT_OK) {
-            data?.data?.let { uploadSelectedFile(it) }
+            val selected = buildList {
+                data?.data?.let(::add)
+                data?.clipData?.let { clip ->
+                    for (index in 0 until clip.itemCount) add(clip.getItemAt(index).uri)
+                }
+            }.distinct()
+            if (selected.isNotEmpty()) uploadSelectedFiles(selected)
         }
         if (requestCode == PHOTO_PICK_REQUEST && resultCode == RESULT_OK) {
             capturePhoto = data?.data?.let { uri -> contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream) }
@@ -760,6 +766,7 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             }
             startActivityForResult(intent, FILE_PICK_REQUEST)
         }
@@ -961,7 +968,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun uploadSelectedFile(uri: android.net.Uri) {
+    private fun uploadSelectedFiles(uris: List<android.net.Uri>) {
         if (currentScreen != Screen.FILES) showScreen(Screen.FILES)
         val status = findViewById<TextView>(R.id.files_status)
         val progress = findViewById<android.widget.ProgressBar>(R.id.files_upload_progress)
@@ -969,24 +976,30 @@ class MainActivity : ComponentActivity() {
         upload.isEnabled = false
         progress.visibility = View.VISIBLE
         progress.progress = 0
-        status.text = "Uploading… 0%"
-        FileRepository.upload(contentResolver, uri,
-            onProgress = { percent -> runOnUiThread {
-                progress.progress = percent
-                status.text = "Uploading… $percent%"
-            } },
-            onSuccess = { filename -> runOnUiThread {
+        val uploaded = mutableListOf<String>()
+        fun uploadNext(index: Int) {
+            if (index >= uris.size) {
                 progress.visibility = View.GONE
                 upload.isEnabled = true
-                status.text = "Uploaded $filename"
-            } },
-            onError = { error -> runOnUiThread {
-                progress.visibility = View.GONE
-                upload.isEnabled = true
-                status.text = error
-                Toast.makeText(this, error, Toast.LENGTH_LONG).show()
-            } },
-        )
+                status.text = "Uploaded ${uploaded.size} file${if (uploaded.size == 1) "" else "s"}"
+                loadFiles(content)
+                return
+            }
+            FileRepository.upload(contentResolver, uris[index],
+                onProgress = { percent -> runOnUiThread {
+                    progress.progress = percent
+                    status.text = "Uploading ${index + 1} of ${uris.size}… $percent%"
+                } },
+                onSuccess = { filename -> runOnUiThread { uploaded += filename; uploadNext(index + 1) } },
+                onError = { error -> runOnUiThread {
+                    progress.visibility = View.GONE
+                    upload.isEnabled = true
+                    status.text = "Uploaded ${uploaded.size} of ${uris.size}. $error"
+                    Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                } },
+            )
+        }
+        uploadNext(0)
     }
 
     private fun loadFiles(view: View) {

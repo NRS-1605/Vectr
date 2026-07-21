@@ -47,7 +47,7 @@
     <string name="telemetry_loading">Loading live system stats…</string>
     <string name="files_title">FILES</string>
     <string name="files_subtitle">Upload to the laptop or download shared files.</string>
-    <string name="upload_file">UPLOAD FILE</string>
+    <string name="upload_file">SELECT FILES</string>
     <string name="available_files">LAPTOP FILES</string>
     <string name="no_files_available">No files are available from the laptop.</string>
     <string name="nav_settings">Settings</string>

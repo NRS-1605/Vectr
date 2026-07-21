@@ -40,3 +40,6 @@ local.properties
 .DS_Store
 Thumbs.db
 *.log
+
+# Generated marketing renders
+marketing/output/
