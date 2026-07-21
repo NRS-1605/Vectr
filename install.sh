@@ -6,6 +6,7 @@ SOURCE_URL="${VECTR_BINARY_URL:-https://github.com/$REPOSITORY/releases/latest/d
 TARGET_DIR="$HOME/.local/bin"
 TARGET="$TARGET_DIR/vectr-core"
 TEMP_FILE=$(mktemp "${TMPDIR:-/tmp}/vectr-core-linux.XXXXXX")
+PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
 
 trap 'rm -f "$TEMP_FILE"' EXIT INT TERM
 
@@ -23,6 +24,14 @@ fi
 cp "$TEMP_FILE" "$TARGET"
 chmod +x "$TARGET"
 
+if [ -f "$HOME/.bashrc" ] || [ -d "$HOME" ]; then
+  touch "$HOME/.bashrc"
+  if ! grep -Fqx "$PATH_LINE" "$HOME/.bashrc"; then
+    printf '\n# VeCTR command-line tools\n%s\n' "$PATH_LINE" >> "$HOME/.bashrc"
+  fi
+fi
+
 echo "VeCTR core installed at $TARGET"
 echo "Start it with: vectr-core"
+echo "~/.local/bin was added to your Bash PATH. Run: source ~/.bashrc"
 echo "Admin console: http://localhost:${PORT:-4101}"

@@ -96,8 +96,9 @@ installs it for the current user, and creates its data folders.
 curl -fsSL https://raw.githubusercontent.com/NRS-1605/Vectr/main/install.sh | sh
 ```
 
-The core installs to `~/.local/bin/vectr-core`. Ensure `~/.local/bin` is on
-your `PATH`, then run `vectr-core` and open `http://localhost:4101`.
+The core installs to `~/.local/bin/vectr-core` and adds that directory to your
+Bash `PATH` automatically. Run `source ~/.bashrc` once in the current terminal,
+then start `vectr-core` and open `http://localhost:4101`.
 
 ### Windows x64
 
