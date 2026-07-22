@@ -40,14 +40,16 @@ address for manual connection if discovery is unavailable.
 
 ### 2. Install the Android app
 
-Build the debug APK:
+Download the latest [VeCTR Android APK](https://github.com/NRS-1605/Vectr/raw/main/releases/Vectr-debug.apk) to your Android phone, open it, and allow installs from your browser or file manager if Android asks. This is a debug build, so Android may show a standard debug-app warning.
+
+To build the same APK yourself:
 
 ```bash
 cd android/AxonTest
 ./gradlew :app:assembleDebug
 ```
 
-Install `app/build/outputs/apk/debug/app-debug.apk` on your Android phone.
+The output is `app/build/outputs/apk/debug/app-debug.apk`.
 The app discovers VeCTR cores advertised as `_vectr._tcp`; choose the detected
 computer, or enter its IP and port in Settings.
 
