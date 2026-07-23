@@ -38,6 +38,22 @@ VeCTR automatically selects its Linux or Windows adapter, starts HTTP,
 WebSocket, mDNS, clipboard, and input services together, and prints the LAN
 address for manual connection if discovery is unavailable.
 
+#### Windows (Command Prompt)
+
+Install the current Node.js LTS release from [nodejs.org](https://nodejs.org/),
+open **Command Prompt**, and run:
+
+```bat
+cd C:\path\to\Vectr
+npm install
+npm start
+```
+
+Keep that Command Prompt window open while using the Android app. When Windows
+Defender Firewall asks, allow Node.js on **Private networks**. Then connect the
+phone to the URL printed as `VeCTR address`; if automatic discovery does not
+find the PC, enter that PC IP address and port `4101` in the app's Settings.
+
 ### 2. Install the Android app
 
 Download the latest [VeCTR Android APK](https://github.com/NRS-1605/Vectr/raw/main/releases/Vectr-debug.apk) to your Android phone, open it, and allow installs from your browser or file manager if Android asks. This is a debug build, so Android may show a standard debug-app warning.
@@ -154,8 +170,10 @@ yourself.
 ### Windows
 
 No third-party input or clipboard service is needed. VeCTR uses native
-PowerShell and Windows APIs. When Windows Defender Firewall asks, allow Node.js
-on **private** networks so your phone can reach the core.
+PowerShell and Windows APIs. Start it with `npm start` from Command Prompt (as
+shown above) and allow Node.js through Windows Defender Firewall on **private**
+networks so your phone can reach the core. Keep the computer unlocked: Windows
+can only send mouse and keyboard input to the active desktop session.
 
 ## Storage and configuration
 
@@ -171,52 +189,6 @@ Runtime data stays out of the repository and is kept locally:
 The backend database is `server/axon-core.sqlite`. Editable settings are stored
 in `server/config.json`; use [server/config.example.json](server/config.example.json)
 as a reference for a clean default configuration.
-
-## Install without Node.js
-
-End users only need the appropriate installer script. It downloads the matching
-binary from the [latest VeCTR release](https://github.com/NRS-1605/Vectr/releases/latest),
-installs it for the current user, and creates its data folders.
-
-### Linux x64
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/NRS-1605/Vectr/main/install.sh | sh
-```
-
-The core installs to `~/.local/bin/vectr-core` and adds that directory to your
-Bash `PATH` automatically. Run `source ~/.bashrc` once in the current terminal,
-then start `vectr-core` and open `http://localhost:4101`.
-
-### Windows x64
-
-Download [install.ps1](https://raw.githubusercontent.com/NRS-1605/Vectr/main/install.ps1),
-then run it from PowerShell:
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\install.ps1
-```
-
-It installs to `%LOCALAPPDATA%\Vectr`, creates a **Vectr Core** Start Menu
-shortcut, and prints the admin URL. Windows SmartScreen may show an unsigned
-binary warning; use **More info → Run anyway** only after verifying the
-download source.
-
-## Building release artifacts
-
-For maintainers, build native, Node.js-free desktop executables for Linux x64
-and Windows x64:
-
-```bash
-npm run build:dist
-```
-
-This produces `dist/vectr-core-linux` and `dist/vectr-core-win.exe`. Upload
-both files to a GitHub Release with those exact names; the installers above use
-GitHub’s `releases/latest/download` endpoint. The bundled core keeps static
-admin pages inside the executable and stores mutable state in `~/axon` (or
-`%USERPROFILE%\\axon` on Windows).
 
 ## SchedWall
 

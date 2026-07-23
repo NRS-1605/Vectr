@@ -5,9 +5,14 @@ const keyboardApi = "Add-Type -AssemblyName System.Windows.Forms;";
 const keyMap = { CTRL: "^", CONTROL: "^", ALT: "%", SHIFT: "+", ENTER: "{ENTER}", ESC: "{ESC}", ESCAPE: "{ESC}", TAB: "{TAB}", SPACE: " ", UP: "{UP}", DOWN: "{DOWN}", LEFT: "{LEFT}", RIGHT: "{RIGHT}", DELETE: "{DELETE}", BACKSPACE: "{BACKSPACE}", HOME: "{HOME}", END: "{END}" };
 
 function psText(text) { return `[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(text, "utf8").toString("base64")}'))`; }
+function escapeSendKeysText(text) {
+  // SendKeys treats these as control syntax. Brace-wrapping makes each one a
+  // literal character, so `type C++` and `type 50%` behave as users expect.
+  return text.replace(/[+^%~(){}\[\]]/g, (character) => `{${character}}`);
+}
 function keypress(command) {
   const trimmed = command.trim();
-  if (trimmed.startsWith("type ")) return runDetached(`${keyboardApi}[System.Windows.Forms.SendKeys]::SendWait(${psText(trimmed.slice(5))})`);
+  if (trimmed.startsWith("type ")) return runDetached(`${keyboardApi}[System.Windows.Forms.SendKeys]::SendWait(${psText(escapeSendKeysText(trimmed.slice(5)))})`);
   const parts = (trimmed.startsWith("key ") ? trimmed.slice(4) : trimmed).split(/[+\s]+/).filter(Boolean);
   const keys = parts.map((key) => keyMap[key.toUpperCase()] || (key.length === 1 ? key : `{${key.toUpperCase()}}`)).join("");
   return runDetached(`${keyboardApi}[System.Windows.Forms.SendKeys]::SendWait(${psText(keys)})`);

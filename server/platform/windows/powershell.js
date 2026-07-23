@@ -12,12 +12,13 @@ function run(script, options = {}) {
   return execFileAsync(executable, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded(script)], {
     timeout: options.timeout || 3000,
     maxBuffer: 1024 * 1024,
+    windowsHide: true,
   });
 }
 
 function runDetached(script) {
   return new Promise((resolve, reject) => {
-    const child = spawn(executable, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded(script)]);
+    const child = spawn(executable, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded(script)], { windowsHide: true });
     let stderr = "";
     child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
     child.on("error", reject);

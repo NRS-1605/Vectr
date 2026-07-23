@@ -6,6 +6,7 @@ class ClipboardSync {
     this.lastKnownValue = "";
     this.hasInitialValue = false;
     this.pollInFlight = false;
+    this.clipboardAvailable = true;
     this.timer = null;
   }
 
@@ -14,10 +15,15 @@ class ClipboardSync {
 
   async writeFromPhone(text) {
     const previousValue = this.lastKnownValue;
+    const hadInitialValue = this.hasInitialValue;
     this.lastKnownValue = text;
     this.hasInitialValue = true;
     try { await runDetached(`Set-Clipboard -Value ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(text, "utf8").toString("base64")}')))`); }
-    catch (error) { this.lastKnownValue = previousValue; throw error; }
+    catch (error) {
+      this.lastKnownValue = previousValue;
+      this.hasInitialValue = hadInitialValue;
+      throw error;
+    }
   }
 
   async poll() {
@@ -28,7 +34,12 @@ class ClipboardSync {
       const text = stdout.replace(/\r?\n$/, "");
       if (!this.hasInitialValue) { this.lastKnownValue = text; this.hasInitialValue = true; }
       else if (text !== this.lastKnownValue) { this.lastKnownValue = text; this.onLaptopClipboardChange(text); }
-    } catch (error) { console.error(`[clipboard] watcher unavailable: ${error.message}`); }
+      if (!this.clipboardAvailable) console.log("[clipboard] Windows clipboard is available");
+      this.clipboardAvailable = true;
+    } catch (error) {
+      if (this.clipboardAvailable) console.error(`[clipboard] watcher unavailable: ${error.message}`);
+      this.clipboardAvailable = false;
+    }
     finally { this.pollInFlight = false; }
   }
 }
