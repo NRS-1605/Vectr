@@ -3,17 +3,21 @@ package com.vectr
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 
 class CoreDiscovery(context: Context, private val onComplete: (DeviceWebSocket.Endpoint?) -> Unit) {
     private val nsdManager = context.getSystemService(NsdManager::class.java)
+    private val multicastLock = (context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager)
+        ?.createMulticastLock("vectr-mdns-discovery")?.apply { setReferenceCounted(false) }
     private val handler = Handler(Looper.getMainLooper())
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private var complete = false
 
     fun start() {
+        runCatching { multicastLock?.acquire() }
         val timeout = Runnable { finish(null) }
         handler.postDelayed(timeout, DISCOVERY_TIMEOUT_MS)
         discoveryListener = object : NsdManager.DiscoveryListener {
@@ -67,12 +71,15 @@ class CoreDiscovery(context: Context, private val onComplete: (DeviceWebSocket.E
                 // Discovery may already have failed or been stopped by Android.
             }
         }
+        runCatching { if (multicastLock?.isHeld == true) multicastLock.release() }
         if (notify) onComplete(endpoint)
     }
 
     private companion object {
         const val TAG = "VectrDiscovery"
         const val SERVICE_TYPE = "_vectr._tcp."
-        const val DISCOVERY_TIMEOUT_MS = 5_000L
+        // Android can take several multicast announcements before it reports a service,
+        // particularly just after Wi-Fi wakes up.
+        const val DISCOVERY_TIMEOUT_MS = 15_000L
     }
 }

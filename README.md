@@ -1,223 +1,150 @@
 # VeCTR
 
-> Your computer, in your pocket.
+> Your computer, in your pocket — privately, over your local network.
 
-VeCTR is a self-hosted Android companion and local desktop core for controlling,
-organising, and staying in sync with your computer from your phone. It runs on
-your private network—there is no cloud account, relay server, or subscription
-required.
+VeCTR pairs an Android companion app with a self-hosted desktop core. It lets a phone control, capture from, and stay in sync with a nearby laptop without accounts, cloud relays, or a subscription.
 
-<p align="center">
-  <strong>Touchpad · Macros · Files · Clipboard · Captures · Focus · Inventory</strong>
-</p>
+## Highlights
 
-## What it does
-
-| From your Android phone | On your desktop core |
+| Android companion | Desktop core |
 | --- | --- |
-| Remote touchpad, click, right-click, and scroll | Linux (including Arch) and Windows support |
-| Trigger configurable macros | mDNS discovery, with manual IP fallback |
-| Send clipboard text and transfer files | One Node.js process on one local port |
-| Capture text, photos, and voice notes | Local SQLite data and folders under `~/axon` |
-| View CPU, RAM, and temperature telemetry | Built-in clipboard, input, and storage adapters |
-| Shared Todos, news, and capture space | Integrated SchedWall admin and wallpaper routes |
-| Focus sessions, Berry economy, and smart inventory | Android-native UI and offline sync queues |
+| Touchpad, scrolling, left/right click | Linux and Windows input adapters |
+| Configurable macro buttons | HTTP and WebSocket server on your LAN |
+| Clipboard, capture, files, and notes | mDNS discovery with manual IP fallback |
+| Todos, inventory, goals, focus, and Berries | Local storage under `~/axon` |
+| Telemetry, news, SchedWall, and Capture Space | One Node.js process, default port `4101` |
+
+## Offline first
+
+VeCTR keeps useful work on the phone when the laptop is away. The app queues and syncs stateful work in order after it reconnects:
+
+- Captures (text, photo, and voice)
+- Todo changes
+- SchedWall overlays
+- Inventory entries and their photos
+- File uploads
+- Cached Berries balance, files, Todos, and inventory for offline viewing
+- Local Goals, organised into weekly, monthly, half-yearly, and yearly plans
+
+Desktop-control features such as Touchpad, Macros, Telemetry, and downloads naturally need the laptop to be online to perform their live action.
 
 ## Quick start
 
-### 1. Start the desktop core
+### 1. Run the desktop core
 
-Install a current Node.js LTS release, then run this in the project root:
+Install a current Node.js LTS release, then run:
 
 ```bash
 npm install
 npm start
 ```
 
-VeCTR automatically selects its Linux or Windows adapter, starts HTTP,
-WebSocket, mDNS, clipboard, and input services together, and prints the LAN
-address for manual connection if discovery is unavailable.
+The core prints one or more `VeCTR address` values. It also advertises itself as `_vectr._tcp` for phone discovery.
 
-#### Windows (Command Prompt)
-
-Install the current Node.js LTS release from [nodejs.org](https://nodejs.org/),
-open **Command Prompt**, and run:
-
-```bat
-cd C:\path\to\Vectr
-npm install
-npm start
-```
-
-Keep that Command Prompt window open while using the Android app. When Windows
-Defender Firewall asks, allow Node.js on **Private networks**. Then connect the
-phone to the URL printed as `VeCTR address`; if automatic discovery does not
-find the PC, enter that PC IP address and port `4101` in the app's Settings.
+On Windows, allow Node.js through Windows Defender Firewall on **Private networks** when prompted. Keep the terminal open while using VeCTR.
 
 ### 2. Install the Android app
 
-Download the latest [VeCTR Android APK](https://github.com/NRS-1605/Vectr/raw/main/releases/Vectr-debug.apk) to your Android phone, open it, and allow installs from your browser or file manager if Android asks. This is a debug build, so Android may show a standard debug-app warning.
-
-To build the same APK yourself:
+Download the [debug APK](https://github.com/NRS-1605/Vectr/raw/main/releases/Vectr-debug.apk), or build it locally:
 
 ```bash
 cd android/AxonTest
 ./gradlew :app:assembleDebug
 ```
 
-The output is `app/build/outputs/apk/debug/app-debug.apk`.
-The app discovers VeCTR cores advertised as `_vectr._tcp`; choose the detected
-computer, or enter its IP and port in Settings.
+The APK is written to:
 
-### 3. Use the remote touchpad
+```text
+android/AxonTest/app/build/outputs/apk/debug/app-debug.apk
+```
 
-Open **Touchpad** in the Android app. In landscape orientation it has three
-vertical controls:
+Connect the phone and laptop to the same Wi-Fi network. VeCTR tries to discover the core automatically. To retry discovery, open **Settings** and press **Use Automatic Discovery**. If the network blocks mDNS, enter the printed desktop IP and port `4101` manually.
 
-- The large **touchpad area** on the left moves the desktop pointer. Tap it
-  without moving to left-click.
-- The narrow **scroll area** in the centre scrolls the active desktop window:
-  drag up or down inside that strip.
-- The **RIGHT CLICK** area on the right sends a right-click.
+## Android modules
 
-### 4. Configure macro buttons
+### Control and transfer
 
-Open the core's admin page at `http://<computer-ip>:4101`, find **Macro
-Buttons**, and configure its eight buttons. Give each button a label, select
-**keypress** as its type, enter a command from the relevant section below, and
-press **Save Macros**. The buttons then appear on the phone's **Macros** screen.
+- **Touchpad** — move, click, right-click, and scroll the desktop.
+- **Macros** — trigger configurable keypresses or trusted local shell commands.
+- **Files** — upload immediately or queue uploads on the phone for later sync.
+- **Clipboard** — send copied text to the laptop.
 
-`shell` macros run a command on the computer and should only be configured by
-someone who trusts every phone that can reach the VeCTR core.
+### Capture and organisation
 
-#### Keypress macros on Windows
+- **Capture** — save text, camera photos, and voice notes into the desktop Capture Space.
+- **Space** — browse saved captures.
+- **Todo** — shared checklist that remains usable offline.
+- **Inventory** — food and medicine tracker with expiry dates and photos.
+- **Goals** — independent Weekly, Monthly, Half-yearly, and Yearly boards. Link a smaller goal to a larger parent goal and tap any goal to mark it complete.
+- **SchedWall** — create schedule overlays; unsent overlays queue locally.
 
-Use familiar shortcut names, separated with `+` (spaces also work). You can
-omit the optional `key ` prefix:
+### Awareness and focus
 
-| Action | Command field value |
+- **Telemetry** — live CPU, RAM, and temperature data.
+- **News** — headlines from configured feeds.
+- **Focus Session** — timed focus work that earns Berries.
+- **Berries** — local reward balance, cached on the phone for offline display.
+
+## Macro configuration
+
+Open the desktop admin page at `http://<computer-ip>:4101`, configure the Macro Buttons, then open **Macros** in the phone app.
+
+Shell macros execute on the laptop. Only configure them on a trusted private network.
+
+### Windows keypress examples
+
+| Action | Value |
 | --- | --- |
-| Send Ctrl+Alt+T | `ctrl+alt+t` |
 | Save | `ctrl+s` |
 | Copy | `ctrl+c` |
 | Paste | `ctrl+v` |
 | Switch application | `alt+tab` |
-| Press Enter | `enter` |
-| Refresh | `f5` |
+| Enter | `enter` |
 | Type text | `type Hello from VeCTR` |
 
-Supported named keys include `ctrl`/`control`, `alt`, `shift`, `enter`, `esc`,
-`tab`, `space`, the arrow keys (`up`, `down`, `left`, `right`), `delete`,
-`backspace`, `home`, and `end`. Single letters and function keys such as `f5`
-also work.
+### Linux keypress examples
 
-#### Keypress macros on Linux
+Linux uses `ydotool` input-event codes in `CODE:STATE` form. Press with `1`, release with `0`, releasing modifiers in reverse order.
 
-Linux keypress macros use `ydotool` Linux input-event codes. A key command is a
-space-separated list in the form `CODE:STATE`, where `1` presses a key and `0`
-releases it. Release keys in reverse order so modifiers do not remain held.
-
-For example, Ctrl+Alt+T is:
-
-```text
-29:1 56:1 20:1 20:0 56:0 29:0
-```
-
-This presses left Ctrl (`29`), left Alt (`56`), and T (`20`), then releases T,
-Alt, and Ctrl. Other useful examples are:
-
-| Action | Command field value |
+| Action | Value |
 | --- | --- |
-| Save (Ctrl+S) | `29:1 31:1 31:0 29:0` |
-| Copy (Ctrl+C) | `29:1 46:1 46:0 29:0` |
-| Paste (Ctrl+V) | `29:1 47:1 47:0 29:0` |
-| Press Enter | `28:1 28:0` |
-| Refresh (F5) | `63:1 63:0` |
-| Type text | `type Hello from VeCTR` |
+| Save | `29:1 31:1 31:0 29:0` |
+| Copy | `29:1 46:1 46:0 29:0` |
+| Paste | `29:1 47:1 47:0 29:0` |
+| Enter | `28:1 28:0` |
 
-To find the code for any shortcut, install `evtest`, run it with `sudo`, choose
-your keyboard's `/dev/input/event...` device, and press each key. Its output
-shows the required number, for example `code 29 (KEY_LEFTCTRL)` or `code 20
-(KEY_T)`. Turn each pressed key into `code:1`, then add the same codes in
-reverse order as `code:0`.
-
-```bash
-# Debian/Ubuntu
-sudo apt install evtest
-sudo evtest
-
-# Arch
-sudo pacman -S evtest
-sudo evtest
-```
-
-`showkey --keycodes` can also display codes from a Linux virtual console. For
-text instead of a shortcut, use `type ` followed by the text; this works on
-both Linux and Windows.
-
-## Desktop support
-
-### Linux
-
-VeCTR supports Linux desktops, including Arch. Install `wl-clipboard` and
-`ydotool` using your distribution’s package manager. `npm start` launches
-`ydotoold` when available; your user must still have access to `/dev/uinput`
-(normally handled through the package’s udev setup).
-
-Set `VECTR_MANAGE_YDOTOOL=false` only when you deliberately run `ydotoold`
-yourself.
-
-### Windows
-
-No third-party input or clipboard service is needed. VeCTR uses native
-PowerShell and Windows APIs. Start it with `npm start` from Command Prompt (as
-shown above) and allow Node.js through Windows Defender Firewall on **private**
-networks so your phone can reach the core. Keep the computer unlocked: Windows
-can only send mouse and keyboard input to the active desktop session.
-
-## Storage and configuration
-
-Runtime data stays out of the repository and is kept locally:
-
-```text
-~/axon/
-├── captures/             # notes and attachments from the phone
-├── files/                # incoming and outgoing transfers
-└── inventory/photos/     # smart-inventory item photos
-```
-
-The backend database is `server/axon-core.sqlite`. Editable settings are stored
-in `server/config.json`; use [server/config.example.json](server/config.example.json)
-as a reference for a clean default configuration.
+Install `ydotool` and `wl-clipboard` through your distribution package manager. The user running VeCTR needs access to `/dev/uinput`.
 
 ## SchedWall
 
-SchedWall is integrated into the same VeCTR core—no second server or port is
-required.
+SchedWall is bundled into the core:
 
-- Admin console: `http://<computer-ip>:4101/schedwall/admin`
+- Admin: `http://<computer-ip>:4101/schedwall/admin`
 - Wallpaper: `http://<computer-ip>:4101/schedwall/wallpaper`
 
-Events created while the phone is offline are queued locally and synced once it
-reconnects.
+## Storage
+
+Runtime data remains local:
+
+```text
+~/axon/
+├── captures/             notes and attachments
+├── files/                transferred files
+└── inventory/photos/     inventory item photos
+```
+
+The server database is `server/axon-core.sqlite`. Use [server/config.example.json](server/config.example.json) as the starting point for a clean configuration.
 
 ## Project layout
 
 ```text
-android/AxonTest/     Android app
-server/               axon-core HTTP, WebSocket, SQLite, and API routes
-server/platform/      Linux and Windows desktop adapters
-public/               desktop admin console
-SchedWall/            integrated SchedWall pages
-shared/               message contract shared by backend clients
+android/AxonTest/     Android companion app
+server/               axon-core HTTP, WebSocket, storage, and routes
+server/platform/      Linux and Windows integrations
+public/               desktop admin UI
+SchedWall/            SchedWall admin and wallpaper pages
+shared/               shared message contract
 ```
-
-## Privacy and network safety
-
-VeCTR is designed for a trusted private LAN. It intentionally has no remote
-account or public exposure layer. Do not port-forward port `4101` or expose it
-to the public internet; anyone who can reach an unprotected core could use its
-desktop-control features.
 
 ## Development
 
@@ -225,11 +152,8 @@ desktop-control features.
 npm run dev
 ```
 
-The Android project can be opened directly from `android/AxonTest` in Android
-Studio. Generated build output, local databases, runtime data, per-machine
-settings, and secrets are excluded by [.gitignore](.gitignore).
+Open `android/AxonTest` directly in Android Studio to develop the Android client.
 
----
+## Privacy and safety
 
-Built for the moments when your computer is across the room—not across the
-internet.
+VeCTR is intended for a trusted private LAN. Do not expose port `4101` to the public internet or port-forward it: anyone who can reach an unprotected core may access desktop-control features.

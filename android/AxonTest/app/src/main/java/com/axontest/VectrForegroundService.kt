@@ -27,6 +27,10 @@ class VectrForegroundService : Service() {
                 if (connected) {
                     reconnectScheduled = false
                     OfflineCaptureQueue.flush(applicationContext)
+                    SchedWallOfflineQueue.flush(applicationContext)
+                    TodoRepository.flush(applicationContext)
+                    InventoryOfflineQueue.flush(applicationContext)
+                    OfflineFileQueue.flush(applicationContext)
                 } else {
                     OfflineCaptureQueue.onConnectionLost()
                     scheduleReconnect()
@@ -78,7 +82,9 @@ class VectrForegroundService : Service() {
         reconnectScheduled = true
         handler.postDelayed({
             reconnectScheduled = false
-            connectFromSavedEndpoint()
+            // A saved address may belong to a previous network. Re-run mDNS instead of
+            // retrying that stale address forever.
+            connectFromSavedEndpoint(forceDiscovery = true)
         }, RECONNECT_DELAY_MS)
     }
 

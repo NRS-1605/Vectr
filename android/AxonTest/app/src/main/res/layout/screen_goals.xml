@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_home_hero" android:orientation="vertical" android:padding="20dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GOALS" android:textColor="@color/text_primary" android:textSize="30sp" android:textStyle="bold" android:fontFamily="@font/space_mono" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="PLAN SMALL. BUILD TOWARD THE BIGGER PICTURE." android:textColor="@color/text_muted" android:textSize="12sp" android:letterSpacing="0.08" />
+            <Button android:id="@+id/goals_add" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginTop="16dp" android:text="ADD GOAL" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/goals_container" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

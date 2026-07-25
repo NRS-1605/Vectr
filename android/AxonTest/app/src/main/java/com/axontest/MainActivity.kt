@@ -44,7 +44,7 @@ import java.util.UUID
 import java.io.File
 
 class MainActivity : ComponentActivity() {
-    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TELEMETRY, NEWS, TODO, SPACE, SCHEDWALL, VOYAGE, WANTED, SETTINGS }
+    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TELEMETRY, NEWS, TODO, SPACE, SCHEDWALL, VOYAGE, WANTED, GOALS, SETTINGS }
 
     private lateinit var content: View
     private lateinit var navButtons: Map<Screen, ImageButton>
@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity() {
         HomeModule("SchedWall", "One-off schedule overlays", Screen.SCHEDWALL, 2, R.drawable.ic_schedwall_clean),
         HomeModule("Focus Session", "Protect time and earn Berries", Screen.VOYAGE, 1, R.drawable.ic_focus),
         HomeModule("Inventory", "Food and medicine expiry tracker", Screen.INVENTORY, 1, R.drawable.ic_inventory),
+        HomeModule("Goals", "Plan and connect your long-term goals", Screen.GOALS, 2, R.drawable.ic_focus),
     )
 
     private data class PendingMacro(val buttonId: Int, val label: String, val button: Button, val timeout: Runnable)
@@ -112,6 +113,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppContextHolder.context = applicationContext
         resetLocalDataForFreshInstall()
         DeviceWebSocket.initializeDeviceId(this)
         setContentView(R.layout.activity_main)
@@ -126,6 +128,9 @@ class MainActivity : ComponentActivity() {
                 updateScreenSubscription()
                 if (connected) sendPendingSharedClipboard()
                 if (connected) SchedWallOfflineQueue.flush(this)
+                if (connected) TodoRepository.flush(this)
+                if (connected) InventoryOfflineQueue.flush(this)
+                if (connected) OfflineFileQueue.flush(this)
             }
         }
         DeviceWebSocket.observeMessages { type, payload ->
@@ -149,7 +154,7 @@ class MainActivity : ComponentActivity() {
     private fun resetLocalDataForFreshInstall() {
         val marker = getSharedPreferences(FRESH_INSTALL_PREFS, MODE_PRIVATE)
         if (marker.getInt("version", 0) >= FRESH_INSTALL_VERSION) return
-        listOf(PREFS_NAME, "voyage_profile", "vectr_offline_captures", "vectr_schedwall_queue", "vectr_device").forEach { name -> getSharedPreferences(name, MODE_PRIVATE).edit().clear().apply() }
+        listOf(PREFS_NAME, "voyage_profile", "vectr_offline_captures", "vectr_schedwall_queue", "vectr_local_sync", "vectr_device").forEach { name -> getSharedPreferences(name, MODE_PRIVATE).edit().clear().apply() }
         cacheDir.deleteRecursively()
         marker.edit().putInt("version", FRESH_INSTALL_VERSION).apply()
     }
@@ -215,6 +220,7 @@ class MainActivity : ComponentActivity() {
             Screen.SCHEDWALL -> R.layout.screen_schedwall
             Screen.VOYAGE -> R.layout.screen_voyage
             Screen.WANTED -> R.layout.screen_wanted
+            Screen.GOALS -> R.layout.screen_goals
             Screen.SETTINGS -> R.layout.screen_settings
         }
         val screenView = LayoutInflater.from(this).inflate(layout, content as android.view.ViewGroup, false)
@@ -233,6 +239,7 @@ class MainActivity : ComponentActivity() {
             Screen.SCHEDWALL -> bindSchedWall(screenView)
             Screen.VOYAGE -> bindVoyage(screenView)
             Screen.WANTED -> bindWanted(screenView)
+            Screen.GOALS -> bindGoals(screenView)
             Screen.SETTINGS -> bindSettings(screenView)
         }
         updateScreenSubscription()
@@ -498,8 +505,12 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, R.string.core_endpoint_saved, Toast.LENGTH_SHORT).show()
         }
         view.findViewById<Button>(R.id.use_auto_discovery).setOnClickListener {
-            endpointPreferences.edit().remove(PREF_MANUAL_OVERRIDE).apply()
-            startCoreConnection()
+            // A running foreground service ignores a plain start() call. Clear any stale
+            // address and explicitly send it through the discovery path.
+            endpointPreferences.edit().remove(PREF_MANUAL_OVERRIDE).remove(PREF_HOST).remove(PREF_PORT).apply()
+            connectionSource = "Background service discovering axon-core"
+            updateConnectionIndicator()
+            VectrForegroundService.reconnect(this)
         }
     }
 
@@ -788,6 +799,11 @@ class MainActivity : ComponentActivity() {
             val title = name.text.toString().trim(); val count = quantity.text.toString().toIntOrNull(); val manufacture = mfg.text.toString().trim(); val expires = expiry.text.toString().trim()
             if (title.isBlank() || count == null || count < 1 || !isInventoryDate(manufacture) || !isInventoryDate(expires)) { status.text = "Enter a name, quantity, and dates in YYYY-MM-DD format."; return@setOnClickListener }
             if (expires < manufacture) { status.text = "Expiry date must be after manufacture date."; return@setOnClickListener }
+            if (!DeviceWebSocket.isConnected()) {
+                val item = InventoryOfflineQueue.enqueue(this, title, count, manufacture, expires, inventoryPhotoUri)
+                name.text.clear(); quantity.text.clear(); mfg.text.clear(); expiry.text.clear(); inventoryPhotoUri = null; view.findViewById<ImageView>(R.id.inventory_photo_preview).visibility = View.GONE
+                renderInventory(view, InventoryOfflineQueue.cached(this)); status.text = "Saved on this phone — it will sync when reconnected."; return@setOnClickListener
+            }
             save.isEnabled = false; save.text = "SAVING…"; status.text = "Saving to your inventory…"
             InventoryRepository.add(contentResolver, title, count, manufacture, expires, inventoryPhotoUri, { _ -> runOnUiThread {
                 name.text.clear(); quantity.text.clear(); mfg.text.clear(); expiry.text.clear(); inventoryPhotoUri = null; view.findViewById<ImageView>(R.id.inventory_photo_preview).visibility = View.GONE
@@ -838,6 +854,68 @@ class MainActivity : ComponentActivity() {
         view.findViewById<Button>(R.id.todo_add).setOnClickListener { val text = input.text.toString().trim(); if (text.isNotBlank()) TodoRepository.add(text, { items -> runOnUiThread { input.text.clear(); renderTodos(items) } }, { error -> runOnUiThread { status.text = error } }) }
         view.findViewById<Button>(R.id.todo_clear).setOnClickListener { TodoRepository.clear({ items -> runOnUiThread { renderTodos(items) } }, { error -> runOnUiThread { status.text = error } }) }
         load()
+    }
+
+    private fun bindGoals(view: View) {
+        val container = view.findViewById<LinearLayout>(R.id.goals_container)
+        fun render() {
+            val goals = GoalsRepository.all(this)
+            container.removeAllViews()
+            GoalPeriod.entries.forEach { period ->
+                val panel = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_home_tile); setPadding(18.dp, 16.dp, 18.dp, 14.dp)
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 230.dp).apply { setMargins(0, 0, 0, 12.dp) }
+                }
+                panel.addView(TextView(this).apply { text = "${period.label.uppercase()} GOALS"; textSize = 18f; letterSpacing = 0.08f; setTextColor(getColor(R.color.accent_amber)); typeface = android.graphics.Typeface.MONOSPACE })
+                val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 8.dp, 0, 0) }
+                val periodGoals = goals.filter { it.period == period }
+                if (periodGoals.isEmpty()) list.addView(TextView(this).apply { text = "No goals yet"; textSize = 15f; setTextColor(getColor(R.color.text_muted)); setPadding(4.dp, 16.dp, 4.dp, 16.dp) })
+                periodGoals.forEach { goal ->
+                    val parent = goals.firstOrNull { it.id == goal.parentId }
+                    list.addView(LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_macro_log); isClickable = true; setPadding(14.dp, 12.dp, 14.dp, 12.dp)
+                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 8.dp) }
+                        setOnClickListener { GoalsRepository.toggle(this@MainActivity, goal.id); render() }
+                        addView(TextView(this@MainActivity).apply { text = if (goal.checked) "✓  ${goal.title}" else "○  ${goal.title}"; textSize = 18f; setTextColor(getColor(if (goal.checked) R.color.ok else R.color.text_primary)) })
+                        parent?.let { addView(TextView(this@MainActivity).apply { text = "Linked to: ${it.period.label} · ${it.title}"; textSize = 13f; setTextColor(getColor(R.color.text_muted)); setPadding(28.dp, 6.dp, 0, 0) }) }
+                    })
+                }
+                panel.addView(android.widget.ScrollView(this).apply {
+                    isFillViewport = true
+                    isNestedScrollingEnabled = true
+                    // The screen itself scrolls too. Keep a drag that begins in this list
+                    // inside the timeframe panel rather than handing it to the outer page.
+                    setOnTouchListener { _, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> parent?.requestDisallowInterceptTouchEvent(true)
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
+                        }
+                        false
+                    }
+                    addView(list)
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+                })
+                container.addView(panel)
+            }
+        }
+        view.findViewById<Button>(R.id.goals_add).setOnClickListener {
+            val form = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 12, 48, 0) }
+            val title = EditText(this).apply { hint = "Goal title" }
+            val period = android.widget.Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, GoalPeriod.entries.map { it.label }) }
+            val existing = GoalsRepository.all(this)
+            val parentChoices = listOf("No parent goal") + existing.map { "${it.period.label}: ${it.title}" }
+            val parent = android.widget.Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, parentChoices) }
+            form.addView(title); form.addView(TextView(this).apply { text = "TIMEFRAME"; setPadding(0, 18, 0, 0) }); form.addView(period)
+            form.addView(TextView(this).apply { text = "LINK TO A PARENT GOAL (OPTIONAL)"; setPadding(0, 18, 0, 0) }); form.addView(parent)
+            AlertDialog.Builder(this).setTitle("Add goal").setView(form).setNegativeButton("Cancel", null).setPositiveButton("Add") { _, _ ->
+                val value = title.text.toString().trim()
+                if (value.isNotBlank()) {
+                    val parentId = parent.selectedItemPosition.takeIf { it > 0 }?.let { existing[it - 1].id }
+                    GoalsRepository.add(this, value, GoalPeriod.entries[period.selectedItemPosition], parentId); render()
+                }
+            }.show()
+        }
+        render()
     }
 
     private fun bindSpace(view: View) {
@@ -973,6 +1051,13 @@ class MainActivity : ComponentActivity() {
         val status = findViewById<TextView>(R.id.files_status)
         val progress = findViewById<android.widget.ProgressBar>(R.id.files_upload_progress)
         val upload = findViewById<Button>(R.id.files_upload)
+        if (!DeviceWebSocket.isConnected()) {
+            try {
+                val names = uris.map { OfflineFileQueue.enqueue(this, it) }
+                status.text = "Saved ${names.size} file(s) on this phone — ${OfflineFileQueue.count(this)} waiting to sync."
+            } catch (error: Exception) { status.text = error.message ?: "Could not queue files" }
+            return
+        }
         upload.isEnabled = false
         progress.visibility = View.VISIBLE
         progress.progress = 0
@@ -1323,6 +1408,7 @@ class MainActivity : ComponentActivity() {
             Screen.SCHEDWALL -> R.string.nav_schedwall
             Screen.VOYAGE -> R.string.nav_home
             Screen.WANTED -> R.string.nav_home
+            Screen.GOALS -> R.string.nav_home
             Screen.SETTINGS -> R.string.nav_settings
         },
     )

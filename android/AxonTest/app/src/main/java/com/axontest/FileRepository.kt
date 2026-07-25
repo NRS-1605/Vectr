@@ -20,6 +20,7 @@ import okio.BufferedSink
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.io.File
 
 data class TransferFile(val filename: String, val size: Long)
 
@@ -64,20 +65,49 @@ object FileRepository {
         }) } catch (error: Exception) { onError(error.message ?: "Could not start file upload") }
     }
 
+    fun uploadFile(file: File, filename: String = file.name, onProgress: (Int) -> Unit = {}, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
+        val mediaType = "application/octet-stream".toMediaType()
+        val body = object : RequestBody() {
+            override fun contentType() = mediaType
+            override fun contentLength() = file.length()
+            override fun writeTo(sink: BufferedSink) {
+                file.inputStream().use { input ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE); var copied = 0L
+                    while (true) { val count = input.read(buffer); if (count < 0) break; sink.write(buffer, 0, count); copied += count; if (file.length() > 0) onProgress(((copied * 100) / file.length()).toInt()) }
+                }
+            }
+        }
+        try {
+            val form = MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart("file", filename, body).build()
+            client.newCall(Request.Builder().url(DeviceWebSocket.apiUrl("/api/files/upload")).post(form).build()).enqueue(object : Callback {
+                override fun onFailure(call: Call, error: IOException) = onError(error.message ?: "Could not upload file")
+                override fun onResponse(call: Call, response: Response) = response.use { if (!it.isSuccessful) onError("Could not upload file (${it.code})") else onSuccess(JSONObject(it.body?.string() ?: "{}").optString("filename", filename)) }
+            })
+        } catch (error: Exception) { onError(error.message ?: "Could not start file upload") }
+    }
+
     fun fetchFiles(onSuccess: (List<TransferFile>) -> Unit, onError: (String) -> Unit) {
-        val request = Request.Builder().url(DeviceWebSocket.apiUrl("/api/files/list")).header("x-vectr-session", DeviceWebSocket.featureSessionId("files")).header("x-vectr-device", DeviceWebSocket.deviceIdentity()).build()
+        val request = try { Request.Builder().url(DeviceWebSocket.apiUrl("/api/files/list")).header("x-vectr-session", DeviceWebSocket.featureSessionId("files")).header("x-vectr-device", DeviceWebSocket.deviceIdentity()).build() }
+        catch (error: Exception) { return cachedFiles(onSuccess, onError, error.message ?: "Could not load files") }
         client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, error: IOException) = onError(error.message ?: "Could not load files")
+            override fun onFailure(call: Call, error: IOException) = cachedFiles(onSuccess, onError, error.message ?: "Could not load files")
             override fun onResponse(call: Call, response: Response) = response.use {
-                if (!it.isSuccessful) return onError(if (it.code == 402) "gate.denied" else "Could not load files (${it.code})")
+                if (!it.isSuccessful) return cachedFiles(onSuccess, onError, if (it.code == 402) "gate.denied" else "Could not load files (${it.code})")
                 try {
                     val files = JSONArray(it.body?.string() ?: "[]")
                     onSuccess((0 until files.length()).map { index ->
                         files.getJSONObject(index).let { TransferFile(it.getString("filename"), it.getLong("size")) }
-                    })
+                    }.also { result -> AppContextHolder.context?.let { LocalSyncStore.writeArray(it, "files_cache", files) } })
                 } catch (error: Exception) { onError(error.message ?: "Could not read file list") }
             }
         })
+    }
+
+    private fun cachedFiles(onSuccess: (List<TransferFile>) -> Unit, onError: (String) -> Unit, error: String) {
+        val context = AppContextHolder.context
+        if (context == null || !LocalSyncStore.has(context, "files_cache")) return onError(error)
+        val cache = LocalSyncStore.readArray(context, "files_cache")
+        onSuccess((0 until cache.length()).map { index -> cache.getJSONObject(index).let { TransferFile(it.getString("filename"), it.getLong("size")) } })
     }
 
     fun download(contentResolver: ContentResolver, file: TransferFile, onSuccess: () -> Unit, onError: (String) -> Unit) {
@@ -111,7 +141,7 @@ object FileRepository {
         })
     }
 
-    private fun displayName(contentResolver: ContentResolver, uri: Uri): String? = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+    fun displayName(contentResolver: ContentResolver, uri: Uri): String? = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
         if (cursor.moveToFirst()) cursor.getString(0) else null
     }
 }

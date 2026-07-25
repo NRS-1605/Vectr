@@ -43,5 +43,6 @@ local.properties
 Thumbs.db
 *.log
 
-# Generated marketing renders
-marketing/output/
+# Generated experiments and marketing renders
+marketing/
+brag-output/
