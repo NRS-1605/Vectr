@@ -7,7 +7,14 @@
     android:padding="28dp">
 
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.12" android:text="@string/capture_title" android:textColor="@color/accent_amber" android:textSize="20sp" />
-    <EditText android:id="@+id/capture_heading" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="20dp" android:background="@drawable/bg_input" android:hint="@string/capture_heading_hint" android:inputType="textCapSentences" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
+
+    <CheckBox android:id="@+id/lecture_mode_toggle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Lecture mode" android:textColor="@color/text_primary" android:textSize="14sp" />
+
+    <AutoCompleteTextView android:id="@+id/lecture_subject" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="Subject (auto-filled from timetable)" android:inputType="textCapSentences" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" android:visibility="gone" />
+
+    <EditText android:id="@+id/lecture_date" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="Date (YYYY-MM-DD)" android:inputType="textCapSentences" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" android:visibility="gone" />
+
+    <EditText android:id="@+id/capture_heading" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="@string/capture_heading_hint" android:inputType="textCapSentences" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
     <AutoCompleteTextView android:id="@+id/capture_tag" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="@string/capture_tag_hint" android:inputType="textCapSentences" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
     <EditText android:id="@+id/capture_text" android:layout_width="match_parent" android:layout_height="130dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:gravity="top|start" android:hint="@string/capture_body_hint" android:inputType="textMultiLine|textCapSentences" android:padding="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" android:textSize="16sp" />
 

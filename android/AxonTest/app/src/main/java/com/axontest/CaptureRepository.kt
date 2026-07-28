@@ -16,6 +16,7 @@ import java.io.IOException
 import java.io.File
 
 data class VoiceTranscription(val transcript: String, val heading: String)
+data class LectureTranscription(val transcript: String, val lectureSubject: String, val lectureDate: String, val lectureTime: String, val lectureFilename: String)
 
 object CaptureRepository {
     private val client = OkHttpClient()
@@ -96,6 +97,38 @@ object CaptureRepository {
                     val body = JSONObject(it.body?.string() ?: "{}")
                     onSuccess(VoiceTranscription(body.getString("transcript"), body.optJSONObject("capture")?.optString("heading") ?: "Voice"))
                 } catch (error: Exception) { onError(error.message ?: "Could not read transcription") }
+            }
+        })
+    }
+
+    fun uploadLectureVoice(file: File, subject: String, date: String, slot: String? = null, heading: String? = null, onSuccess: (LectureTranscription) -> Unit, onError: (String) -> Unit) {
+        val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("lecture", "true")
+            .addFormDataPart("subject", subject)
+            .addFormDataPart("date", date)
+            .addFormDataPart("save", "false")
+        if (slot != null) builder.addFormDataPart("slot", slot)
+        if (heading != null) builder.addFormDataPart("heading", heading)
+        builder.addFormDataPart("audio", file.name, file.readBytes().toRequestBody("audio/wav".toMediaType()))
+        val request = Request.Builder().url(DeviceWebSocket.apiUrl("/api/capture/upload-voice")).post(builder.build()).build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, error: IOException) = onError(error.message ?: "Could not upload lecture recording")
+            override fun onResponse(call: Call, response: Response) = response.use {
+                if (!it.isSuccessful) {
+                    val message = try { JSONObject(it.body?.string() ?: "{}").optString("error") } catch (_: Exception) { "" }
+                    return onError(message.ifBlank { "Could not transcribe lecture (${it.code})" })
+                }
+                try {
+                    val body = JSONObject(it.body?.string() ?: "{}")
+                    val lecture = body.optJSONObject("lecture")
+                    onSuccess(LectureTranscription(
+                        transcript = body.getString("transcript"),
+                        lectureSubject = lecture?.optString("subject") ?: subject,
+                        lectureDate = lecture?.optString("date") ?: date,
+                        lectureTime = lecture?.optString("time") ?: (slot ?: ""),
+                        lectureFilename = lecture?.optString("lectureFilename") ?: "",
+                    ))
+                } catch (error: Exception) { onError(error.message ?: "Could not read lecture transcription") }
             }
         })
     }

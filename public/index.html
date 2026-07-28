@@ -31,6 +31,7 @@
         <button class="tab" id="todo-tab" role="tab" aria-selected="false" aria-controls="todo-panel" data-tab="todo">Todo</button>
         <a class="tab schedwall-link" id="schedwall-tab" href="/schedwall/admin">SchedWall</a>
         <button class="tab" id="voyages-tab" role="tab" aria-selected="false" aria-controls="voyages-panel" data-tab="voyages">Voyages</button>
+        <button class="tab" id="clipboard-tab" role="tab" aria-selected="false" aria-controls="clipboard-panel" data-tab="clipboard">Clipboard</button>
         <button class="tab" id="settings-tab" role="tab" aria-selected="false" aria-controls="settings-panel" data-tab="settings">Settings</button>
       </nav>
 
@@ -132,6 +133,12 @@
         <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Captain's log</p><h2>Voyage History</h2></div></div><div class="voyage-history" id="voyage-history"></div></section>
       </section>
 
+
+      <section class="tab-panel" id="clipboard-panel" role="tabpanel" aria-labelledby="clipboard-tab" hidden>
+        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">History</p><h2>Clipboard</h2></div><button class="text-button" id="clear-clipboard-history" type="button">Clear</button></div>
+          <div class="clipboard-list" id="clipboard-list"><p class="empty-state">Loading clipboard history…</p></div>
+        </section>
+      </section>
 
       <section class="tab-panel" id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
         <section class="panel" aria-labelledby="news-feeds-heading">

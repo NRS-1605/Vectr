@@ -29,6 +29,7 @@ import android.widget.GridLayout
 import android.widget.Button
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -42,9 +43,11 @@ import java.time.Instant
 import java.util.Date
 import java.util.UUID
 import java.io.File
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 class MainActivity : ComponentActivity() {
-    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TELEMETRY, NEWS, TODO, SPACE, SCHEDWALL, VOYAGE, WANTED, GOALS, SETTINGS }
+    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TELEMETRY, NEWS, TODO, SPACE, SCHEDWALL, VOYAGE, WANTED, GOALS, CGPA, CLIPBOARD_HISTORY, SETTINGS }
 
     private lateinit var content: View
     private lateinit var navButtons: Map<Screen, ImageButton>
@@ -62,10 +65,12 @@ class MainActivity : ComponentActivity() {
     private var capturePreview: ImageView? = null
     private var removePhotoButton: TextView? = null
     private var pendingSharedClipboardText: String? = null
+    private var clipboardHistoryList: LinearLayout? = null
     private var telemetry: org.json.JSONObject? = null
     private val telemetryHistory = mutableListOf<TelemetrySample>()
     private var isAppForeground = false
     private var activeScreenSubscription: String? = null
+    private var activeTouchpadSurface: TouchpadSurfaceView? = null
     private var lastConnectedAt = 0L
     private val homeModules = listOf(
         HomeModule("Capture", "Text, photo, and voice notes", Screen.CAPTURE, 2, R.drawable.ic_capture),
@@ -81,6 +86,8 @@ class MainActivity : ComponentActivity() {
         HomeModule("Focus Session", "Protect time and earn Berries", Screen.VOYAGE, 1, R.drawable.ic_focus),
         HomeModule("Inventory", "Food and medicine expiry tracker", Screen.INVENTORY, 1, R.drawable.ic_inventory),
         HomeModule("Goals", "Plan and connect your long-term goals", Screen.GOALS, 2, R.drawable.ic_focus),
+        HomeModule("CGPA", "Semester grade tracker", Screen.CGPA, 1, R.drawable.ic_berry),
+        HomeModule("Clipboard History", "Copied text from all devices", Screen.CLIPBOARD_HISTORY, 1, R.drawable.ic_clipboard),
     )
 
     private data class PendingMacro(val buttonId: Int, val label: String, val button: Button, val timeout: Runnable)
@@ -123,6 +130,7 @@ class MainActivity : ComponentActivity() {
         DeviceWebSocket.observeConnection { connected ->
             runOnUiThread {
                 isConnected = connected
+                activeTouchpadSurface?.connected = connected
                 if (connected) lastConnectedAt = System.currentTimeMillis()
                 updateConnectionIndicator()
                 updateScreenSubscription()
@@ -138,6 +146,7 @@ class MainActivity : ComponentActivity() {
                 when (type) {
                     "macro.result" -> handleMacroResult(payload)
                     "clipboard.update" -> if (payload.optString("source") == "laptop") receiveLaptopClipboard(payload.optString("text"))
+                    "clipboard.history" -> if (currentScreen == Screen.CLIPBOARD_HISTORY) clipboardHistoryRefresh()
                     "telemetry.update" -> recordTelemetry(payload)
                     "todos.update" -> if (currentScreen == Screen.TODO) payload.optJSONArray("items")?.let { renderTodos(TodoRepository.parse(it)) }
                     "gate.denied" -> showGateDenied(payload)
@@ -205,6 +214,7 @@ class MainActivity : ComponentActivity() {
         (content as android.view.ViewGroup).removeAllViews()
         connectionLabel = null
         connectionDot = null
+        activeTouchpadSurface = null
 
         val layout = when (screen) {
             Screen.HOME -> R.layout.screen_home
@@ -221,6 +231,8 @@ class MainActivity : ComponentActivity() {
             Screen.VOYAGE -> R.layout.screen_voyage
             Screen.WANTED -> R.layout.screen_wanted
             Screen.GOALS -> R.layout.screen_goals
+            Screen.CGPA -> R.layout.screen_cgpa
+            Screen.CLIPBOARD_HISTORY -> R.layout.screen_clipboard
             Screen.SETTINGS -> R.layout.screen_settings
         }
         val screenView = LayoutInflater.from(this).inflate(layout, content as android.view.ViewGroup, false)
@@ -240,6 +252,8 @@ class MainActivity : ComponentActivity() {
             Screen.VOYAGE -> bindVoyage(screenView)
             Screen.WANTED -> bindWanted(screenView)
             Screen.GOALS -> bindGoals(screenView)
+            Screen.CGPA -> bindCgpa(screenView)
+            Screen.CLIPBOARD_HISTORY -> bindClipboardHistory(screenView)
             Screen.SETTINGS -> bindSettings(screenView)
         }
         updateScreenSubscription()
@@ -377,6 +391,79 @@ class MainActivity : ComponentActivity() {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text))
         Toast.makeText(this, R.string.clipboard_received, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun clipboardHistoryRefresh() {
+        val container = clipboardHistoryList ?: return
+        val client = OkHttpClient()
+        val request = Request.Builder().url(DeviceWebSocket.apiUrl("/api/clipboard/history")).build()
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) { runOnUiThread { Toast.makeText(this@MainActivity, "Could not load clipboard history", Toast.LENGTH_SHORT).show() } }
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) { response.use {
+                if (!it.isSuccessful) { runOnUiThread { Toast.makeText(this@MainActivity, "Could not load clipboard history (${it.code})", Toast.LENGTH_SHORT).show() }; return }
+                val body = it.body?.string() ?: return
+                runOnUiThread {
+                    container.removeAllViews()
+                    try {
+                        val entries = org.json.JSONArray(body)
+                        if (entries.length() == 0) {
+                            container.addView(TextView(this@MainActivity).apply { text = "No clipboard entries yet."; setTextColor(getColor(R.color.text_muted)); textSize = 13f; gravity = android.view.Gravity.CENTER; setPadding(0, 24.dp, 0, 24.dp) })
+                            return@runOnUiThread
+                        }
+                        for (i in 0 until entries.length()) {
+                            val entry = entries.getJSONObject(i)
+                            val entryText = entry.getString("text")
+                            val entrySource = entry.getString("source")
+                            val entryTime = entry.getString("timestamp")
+                            val card = LinearLayout(this@MainActivity).apply {
+                                orientation = LinearLayout.VERTICAL
+                                background = getDrawable(R.drawable.bg_macro_log)
+                                setPadding(14.dp, 12.dp, 14.dp, 12.dp)
+                                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 8.dp) }
+                                isClickable = true; isFocusable = true
+                                setOnClickListener {
+                                    val clip = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                    clip.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), entryText))
+                                    Toast.makeText(this@MainActivity, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                }
+                                addView(LinearLayout(this@MainActivity).apply {
+                                    orientation = LinearLayout.HORIZONTAL
+                                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                                    addView(TextView(this@MainActivity).apply {
+                                        text = if (entrySource == "laptop") "LAPTOP" else "MOBILE"
+                                        textSize = 10f
+                                        typeface = android.graphics.Typeface.MONOSPACE
+                                        setTextColor(getColor(if (entrySource == "laptop") R.color.accent_amber else R.color.failure_muted_red))
+                                        setPadding(4.dp, 2.dp, 4.dp, 2.dp)
+                                    })
+                                    addView(TextView(this@MainActivity).apply {
+                                        text = "  ·  $entryTime"
+                                        textSize = 10f
+                                        setTextColor(getColor(R.color.text_muted))
+                                        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                                    })
+                                })
+                                addView(TextView(this@MainActivity).apply {
+                                    text = entryText
+                                    textSize = 13f
+                                    setTextColor(getColor(R.color.text_primary))
+                                    setPadding(0, 6.dp, 0, 0)
+                                    maxLines = 4
+                                })
+                            }
+                            container.addView(card)
+                        }
+                    } catch (e: Exception) {
+                        container.addView(TextView(this@MainActivity).apply { text = "Could not parse clipboard history."; setTextColor(getColor(R.color.text_muted)); textSize = 13f; gravity = android.view.Gravity.CENTER; setPadding(0, 24.dp, 0, 24.dp) })
+                    }
+                }
+            } }
+        })
+    }
+
+    private fun bindClipboardHistory(view: View) {
+        clipboardHistoryList = view.findViewById(R.id.clipboard_list)
+        clipboardHistoryRefresh()
     }
 
     private fun showGateDenied(payload: org.json.JSONObject) {
@@ -574,6 +661,26 @@ class MainActivity : ComponentActivity() {
                 recordingIndicator.postDelayed(ticker, 500)
             }
         }
+
+        val lectureToggle = view.findViewById<CheckBox>(R.id.lecture_mode_toggle)
+        val lectureSubject = view.findViewById<AutoCompleteTextView>(R.id.lecture_subject)
+        val lectureDate = view.findViewById<EditText>(R.id.lecture_date)
+        lectureToggle.setOnCheckedChangeListener { _, isChecked ->
+            lectureSubject.visibility = if (isChecked) View.VISIBLE else View.GONE
+            lectureDate.visibility = if (isChecked) View.VISIBLE else View.GONE
+            if (isChecked) {
+                val today = java.time.LocalDate.now().toString()
+                lectureDate.setText(today)
+                LectureRepository.fetchSubjects({ subjects ->
+                    if (subjects.isNotEmpty()) {
+                        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, subjects.map { it.slug.replace("-", " ").replaceFirstChar { c -> c.uppercaseChar() } })
+                        lectureSubject.setAdapter(adapter)
+                        lectureSubject.threshold = 0
+                    }
+                }, {})
+            }
+        }
+
         mic.setOnClickListener {
             if (recorder == null) {
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -615,22 +722,47 @@ class MainActivity : ComponentActivity() {
                     }
                     recordingIndicator.visibility = View.VISIBLE
                     recordingIndicator.alpha = 1f
-                    recordingIndicator.text = "Transcribing locally…"
-                    CaptureRepository.uploadVoiceFile(voiceFile, saveCapture = false,
-                        onSuccess = { result -> runOnUiThread {
+
+                    if (lectureToggle.isChecked) {
+                        val subject = lectureSubject.text.toString().trim().lowercase().replace(" ", "-")
+                        val date = lectureDate.text.toString().trim().ifBlank { java.time.LocalDate.now().toString() }
+                        if (subject.isBlank()) {
+                            recordingIndicator.visibility = View.GONE
+                            Toast.makeText(this, "Enter a subject for lecture mode", Toast.LENGTH_SHORT).show()
                             voiceFile.delete()
-                            recordingIndicator.visibility = View.GONE
-                            if (headingText.text.isBlank()) headingText.setText(result.heading)
-                            tagText.setText("voice", false)
-                            bodyText.setText(result.transcript)
-                            Toast.makeText(this, "Voice capture transcribed", Toast.LENGTH_SHORT).show()
-                        } },
-                        onError = { error -> runOnUiThread {
-                            recordingIndicator.visibility = View.GONE
-                            OfflineCaptureQueue.enqueue(this, "Voice ${DateFormat.getDateTimeInstance().format(Date())}", "voice", "", voicePath = voiceFile.absolutePath)
-                            Toast.makeText(this, "$error. Recording queued for retry.", Toast.LENGTH_LONG).show()
-                        } },
-                    )
+                            return@setOnClickListener
+                        }
+                        recordingIndicator.text = "Transcribing lecture…"
+                        CaptureRepository.uploadLectureVoice(voiceFile, subject = subject, date = date,
+                            onSuccess = { result -> runOnUiThread {
+                                voiceFile.delete()
+                                recordingIndicator.visibility = View.GONE
+                                Toast.makeText(this, "Lecture transcribed and saved to ${result.lectureSubject}", Toast.LENGTH_LONG).show()
+                            } },
+                            onError = { error -> runOnUiThread {
+                                recordingIndicator.visibility = View.GONE
+                                OfflineCaptureQueue.enqueue(this, "Lecture $subject $date", "lecture", "", voicePath = voiceFile.absolutePath)
+                                Toast.makeText(this, "$error. Recording queued for retry.", Toast.LENGTH_LONG).show()
+                            } },
+                        )
+                    } else {
+                        recordingIndicator.text = "Transcribing locally…"
+                        CaptureRepository.uploadVoiceFile(voiceFile, saveCapture = false,
+                            onSuccess = { result -> runOnUiThread {
+                                voiceFile.delete()
+                                recordingIndicator.visibility = View.GONE
+                                if (headingText.text.isBlank()) headingText.setText(result.heading)
+                                tagText.setText("voice", false)
+                                bodyText.setText(result.transcript)
+                                Toast.makeText(this, "Voice capture transcribed", Toast.LENGTH_SHORT).show()
+                            } },
+                            onError = { error -> runOnUiThread {
+                                recordingIndicator.visibility = View.GONE
+                                OfflineCaptureQueue.enqueue(this, "Voice ${DateFormat.getDateTimeInstance().format(Date())}", "voice", "", voicePath = voiceFile.absolutePath)
+                                Toast.makeText(this, "$error. Recording queued for retry.", Toast.LENGTH_LONG).show()
+                            } },
+                        )
+                    }
                 } catch (error: Exception) { Toast.makeText(this, error.message ?: "Could not stop recording", Toast.LENGTH_LONG).show() }
             }
         }
@@ -918,10 +1050,147 @@ class MainActivity : ComponentActivity() {
         render()
     }
 
+    private fun bindCgpa(view: View) {
+        val semestersContainer = view.findViewById<LinearLayout>(R.id.cgpa_semesters)
+        val cgpaDisplay = view.findViewById<TextView>(R.id.cgpa_display)
+        val cgpaSubtitle = view.findViewById<TextView>(R.id.cgpa_subtitle)
+        val semesters = CgpaRepository.load(this).toMutableList()
+
+        lateinit var showAddCourseDialog: (Semester) -> Unit
+        lateinit var reRender: () -> Unit
+
+        reRender = {
+            semestersContainer.removeAllViews()
+            semesters.forEachIndexed { index, semester ->
+                val semView = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 4.dp) }
+                }
+                val divider = TextView(this).apply {
+                    text = "──────── ${semester.name} ────────"
+                    gravity = android.view.Gravity.CENTER
+                    setTextColor(getColor(R.color.accent_amber))
+                    textSize = 13f
+                    typeface = android.graphics.Typeface.MONOSPACE
+                    letterSpacing = 0.08f
+                    setPadding(0, 8.dp, 0, 8.dp)
+                }
+                semView.addView(divider)
+
+                semester.courses.forEach { course ->
+                    val row = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = android.view.Gravity.CENTER_VERTICAL
+                        background = getDrawable(R.drawable.bg_macro_log)
+                        setPadding(12.dp, 10.dp, 8.dp, 10.dp)
+                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 6.dp) }
+                        addView(LinearLayout(this@MainActivity).apply {
+                            orientation = LinearLayout.VERTICAL
+                            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                            addView(TextView(this@MainActivity).apply {
+                                text = "${course.courseId} — ${course.courseName}"
+                                textSize = 14f
+                                setTextColor(getColor(R.color.text_primary))
+                            })
+                            addView(TextView(this@MainActivity).apply {
+                                text = "${course.credits} cr · ${course.grade}"
+                                textSize = 11f
+                                setTextColor(getColor(R.color.text_muted))
+                                setPadding(0, 3.dp, 0, 0)
+                            })
+                        })
+                        addView(Button(this@MainActivity).apply {
+                            text = "×"
+                            textSize = 16f
+                            setTextColor(getColor(R.color.failure_muted_red))
+                            setOnClickListener {
+                                CgpaRepository.deleteCourse(this@MainActivity, semesters, semester.name, course.id)
+                                reRender()
+                            }
+                        })
+                    }
+                    semView.addView(row)
+                }
+
+                val addBtn = Button(this).apply {
+                    text = "+ ADD COURSE"
+                    textSize = 11f
+                    letterSpacing = 0.08f
+                    setTextColor(getColor(R.color.accent_amber))
+                    background = getDrawable(R.drawable.bg_macro_log)
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 42.dp).apply { setMargins(0, 0, 0, 12.dp) }
+                    setOnClickListener { showAddCourseDialog(semester) }
+                }
+                semView.addView(addBtn)
+                semestersContainer.addView(semView)
+            }
+
+            val (cgpa, totalCredits) = CgpaRepository.calculateCgpa(semesters)
+            val totalCourses = CgpaRepository.totalCourses(semesters)
+            cgpaDisplay.text = String.format("%.2f", cgpa)
+            cgpaSubtitle.text = "$totalCredits credits · $totalCourses courses"
+        }
+
+        showAddCourseDialog = { semester ->
+            val form = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(48.dp, 12.dp, 48.dp, 0)
+            }
+            val courseIdInput = EditText(this).apply { hint = "Course ID (e.g. CS101)" }
+            val courseNameInput = EditText(this).apply { hint = "Course name" }
+            val creditsInput = EditText(this).apply {
+                hint = "Credits"
+                inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            }
+            val gradeSpinner = android.widget.Spinner(this).apply {
+                adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, CgpaRepository.GRADE_ORDER)
+            }
+
+            form.addView(courseIdInput)
+            form.addView(TextView(this).apply { text = "COURSE NAME"; setPadding(0, 14.dp, 0, 0); textSize = 11f; setTextColor(getColor(R.color.text_muted)) })
+            form.addView(courseNameInput)
+            form.addView(TextView(this).apply { text = "CREDITS"; setPadding(0, 14.dp, 0, 0); textSize = 11f; setTextColor(getColor(R.color.text_muted)) })
+            form.addView(creditsInput)
+            form.addView(TextView(this).apply { text = "GRADE"; setPadding(0, 14.dp, 0, 0); textSize = 11f; setTextColor(getColor(R.color.text_muted)) })
+            form.addView(gradeSpinner)
+
+            AlertDialog.Builder(this)
+                .setTitle("Add course — ${semester.name}")
+                .setView(form)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Add") { _, _ ->
+                    val id = courseIdInput.text.toString().trim()
+                    val name = courseNameInput.text.toString().trim()
+                    val credits = creditsInput.text.toString().toIntOrNull()
+                    val grade = CgpaRepository.GRADE_ORDER.getOrNull(gradeSpinner.selectedItemPosition) ?: ""
+                    if (id.isBlank() || name.isBlank() || credits == null || credits <= 0 || grade.isBlank()) {
+                        Toast.makeText(this@MainActivity, "Fill all fields correctly.", Toast.LENGTH_SHORT).show()
+                        return@setPositiveButton
+                    }
+                    val course = Course(
+                        id = java.util.UUID.randomUUID().toString(),
+                        courseId = id,
+                        courseName = name,
+                        credits = credits,
+                        grade = grade,
+                    )
+                    CgpaRepository.addCourse(this@MainActivity, semesters, semester.name, course)
+                    reRender()
+                }
+                .show()
+        }
+
+        reRender()
+    }
+
     private fun bindSpace(view: View) {
         val filter = view.findViewById<AutoCompleteTextView>(R.id.space_filter); val status = view.findViewById<TextView>(R.id.space_status)
+        val notesTab = view.findViewById<TextView>(R.id.space_notes_tab)
+        val lecturesTab = view.findViewById<TextView>(R.id.space_lectures_tab)
         var allNotes = emptyList<SpaceNote>()
-        fun render(notes: List<SpaceNote>) {
+        var allSubjects = emptyList<LectureSubject>()
+
+        fun renderNotes(notes: List<SpaceNote>) {
             val list = view.findViewById<LinearLayout>(R.id.space_list); list.removeAllViews(); status.text = if (notes.isEmpty()) "No notes found." else ""
             notes.forEach { note ->
                 list.addView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_macro_log); setPadding(14, 12, 14, 12); isClickable = true; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 8, 0, 0) }; setOnClickListener { openSpaceNote(note.filename) }
@@ -929,13 +1198,82 @@ class MainActivity : ComponentActivity() {
                 })
             }
         }
+
+        fun renderLectures() {
+            val list = view.findViewById<LinearLayout>(R.id.space_list); list.removeAllViews()
+            filter.visibility = View.GONE
+            status.text = if (allSubjects.isEmpty()) "No lectures yet. Record one from Capture." else ""
+            allSubjects.forEach { subject ->
+                list.addView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_macro_log); setPadding(14, 14, 14, 14); isClickable = true; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 8, 0, 0) }; setOnClickListener { openSubjectLectures(subject.slug) }
+                    addView(TextView(this@MainActivity).apply { text = subject.slug.replace("-", " ").replaceFirstChar { c -> c.uppercaseChar() }; textSize = 17f; setTextColor(getColor(R.color.text_primary)) })
+                    addView(TextView(this@MainActivity).apply { text = "${subject.count} lecture${if (subject.count == 1) "" else "s"}"; textSize = 12f; setTextColor(getColor(R.color.accent_amber)); setPadding(0, 4, 0, 0) })
+                })
+            }
+        }
+
+        fun renderNotesMode() {
+            filter.visibility = View.VISIBLE
+            notesTab.setBackgroundResource(R.drawable.bg_action); notesTab.setTextColor(getColor(R.color.text_primary))
+            lecturesTab.setBackgroundResource(R.drawable.bg_input); lecturesTab.setTextColor(getColor(R.color.text_muted))
+            CaptureRepository.fetchTags({ tags -> runOnUiThread { filter.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, listOf("All") + tags)); filter.setText("All", false) } }, { })
+            SpaceRepository.fetchNotes({ notes -> runOnUiThread { if (currentScreen == Screen.SPACE) { allNotes = notes; renderNotes(notes) } } }, { error -> runOnUiThread { status.text = error } })
+        }
+
+        fun renderLecturesMode() {
+            filter.visibility = View.GONE
+            lecturesTab.setBackgroundResource(R.drawable.bg_action); lecturesTab.setTextColor(getColor(R.color.text_primary))
+            notesTab.setBackgroundResource(R.drawable.bg_input); notesTab.setTextColor(getColor(R.color.text_muted))
+            LectureRepository.fetchSubjects({ subjects -> runOnUiThread { if (currentScreen == Screen.SPACE) { allSubjects = subjects; renderLectures() } } }, { error -> runOnUiThread { status.text = error } })
+        }
+
         filter.setOnItemClickListener { _, _, _, _ ->
             val selectedTag = filter.text.toString()
-            render(if (selectedTag == "All" || selectedTag.isBlank()) allNotes else allNotes.filter { it.tag == selectedTag })
+            renderNotes(if (selectedTag == "All" || selectedTag.isBlank()) allNotes else allNotes.filter { it.tag == selectedTag })
         }
         filter.setOnClickListener { if (filter.adapter?.count ?: 0 > 0) filter.showDropDown() }
-        CaptureRepository.fetchTags({ tags -> runOnUiThread { filter.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, listOf("All") + tags)); filter.setText("All", false) } }, { })
-        SpaceRepository.fetchNotes({ notes -> runOnUiThread { if (currentScreen == Screen.SPACE) { allNotes = notes; render(notes) } } }, { error -> runOnUiThread { status.text = error } })
+        notesTab.setOnClickListener { renderNotesMode() }
+        lecturesTab.setOnClickListener { renderLecturesMode() }
+        renderNotesMode()
+    }
+
+    private fun openSubjectLectures(subjectSlug: String) {
+        (content as ViewGroup).removeAllViews()
+        val view = LayoutInflater.from(this).inflate(R.layout.screen_space, content as ViewGroup, false)
+        (content as ViewGroup).addView(view)
+        view.findViewById<TextView>(R.id.space_notes_tab).visibility = View.GONE
+        view.findViewById<TextView>(R.id.space_lectures_tab).visibility = View.GONE
+        view.findViewById<AutoCompleteTextView>(R.id.space_filter).visibility = View.GONE
+        val status = view.findViewById<TextView>(R.id.space_status)
+        val list = view.findViewById<LinearLayout>(R.id.space_list)
+        val header = TextView(this).apply { text = subjectSlug.replace("-", " ").replaceFirstChar { c -> c.uppercaseChar() }; textSize = 17f; setTextColor(getColor(R.color.text_primary)); setPadding(0, 8, 0, 12) }
+        list.addView(header)
+        LectureRepository.fetchLectures(subjectSlug, { lectures -> runOnUiThread {
+            if (lectures.isEmpty()) { status.text = "No lectures yet."; return@runOnUiThread }
+            lectures.forEach { lecture ->
+                list.addView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_macro_log); setPadding(14, 12, 14, 12); isClickable = true; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 8, 0, 0) }; setOnClickListener { openLectureDetail(subjectSlug, lecture.filename) }
+                    addView(TextView(this@MainActivity).apply { text = lecture.title; textSize = 15f; setTextColor(getColor(R.color.text_primary)) })
+                    addView(TextView(this@MainActivity).apply { text = "${lecture.date} · ${lecture.time}"; textSize = 12f; setTextColor(getColor(R.color.accent_amber)); setPadding(0, 4, 0, 0) })
+                    addView(TextView(this@MainActivity).apply { text = lecture.preview; textSize = 12f; setTextColor(getColor(R.color.text_muted)); setPadding(0, 6, 0, 0) })
+                })
+            }
+        } }, { error -> runOnUiThread { status.text = error } })
+    }
+
+    private fun openLectureDetail(subjectSlug: String, filename: String) {
+        (content as ViewGroup).removeAllViews()
+        val view = LayoutInflater.from(this).inflate(R.layout.screen_lecture_detail, content as ViewGroup, false)
+        (content as ViewGroup).addView(view)
+        val subjectText = view.findViewById<TextView>(R.id.lecture_detail_subject)
+        val titleText = view.findViewById<TextView>(R.id.lecture_detail_title)
+        val metaText = view.findViewById<TextView>(R.id.lecture_detail_meta)
+        val bodyText = view.findViewById<TextView>(R.id.lecture_detail_body)
+        subjectText.text = subjectSlug.replace("-", " ").replaceFirstChar { c -> c.uppercaseChar() }
+        view.findViewById<Button>(R.id.lecture_detail_back).setOnClickListener { showScreen(Screen.SPACE) }
+        LectureRepository.fetchLecture(subjectSlug, filename, { lecture -> runOnUiThread {
+            titleText.text = lecture.title
+            metaText.text = "${lecture.date} · ${lecture.time}"
+            bodyText.text = lecture.transcript
+        } }, { error -> runOnUiThread { bodyText.text = "Could not load lecture: $error" } })
     }
 
     private fun openSpaceNote(filename: String) {
@@ -1162,107 +1500,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindTouchpad(view: View) {
-        val surface = view.findViewById<View>(R.id.touchpad_surface)
-        val scrollStrip = view.findViewById<View>(R.id.touchpad_scroll_strip)
-        val rightClick = view.findViewById<TextView>(R.id.right_click_button)
-        rightClick.setOnClickListener {
-            flashTouchpadView(rightClick, R.drawable.bg_right_click_pressed, R.drawable.bg_right_click)
-            DeviceWebSocket.sendTouchpadClick(rightButton = true)
+        val surface = view.findViewById<TouchpadSurfaceView>(R.id.touchpad_surface)
+        activeTouchpadSurface = surface
+        surface.connected = isConnected
+        surface.commandSender = object : TouchpadCommandSender {
+            override fun sendMove(dx: Float, dy: Float) = DeviceWebSocket.sendTouchpadMove(dx, dy)
+            override fun sendClick(button: ClickButton) = DeviceWebSocket.sendTouchpadClick(rightButton = button == ClickButton.RIGHT)
+            override fun sendScroll(deltaY: Float) = DeviceWebSocket.sendTouchpadScroll(deltaY)
         }
-
-        var lastX = 0f
-        var lastY = 0f
-        var pendingDx = 0f
-        var pendingDy = 0f
-        var movedDistance = 0f
-        var lastDispatch = 0L
-
-        fun flushMove(force: Boolean = false) {
-            val now = System.currentTimeMillis()
-            if (!force && now - lastDispatch < 24) return
-            if (pendingDx != 0f || pendingDy != 0f) DeviceWebSocket.sendTouchpadMove(pendingDx, pendingDy)
-            pendingDx = 0f
-            pendingDy = 0f
-            lastDispatch = now
-        }
-
-        surface.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    lastX = event.x
-                    lastY = event.y
-                    pendingDx = 0f
-                    pendingDy = 0f
-                    movedDistance = 0f
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.x - lastX
-                    val dy = event.y - lastY
-                    pendingDx += dx
-                    pendingDy += dy
-                    movedDistance += kotlin.math.abs(dx) + kotlin.math.abs(dy)
-                    lastX = event.x
-                    lastY = event.y
-                    flushMove()
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    flushMove(force = true)
-                    if (movedDistance < 18f) {
-                        flashTouchpadView(surface, R.drawable.bg_touchpad_surface_pressed, R.drawable.bg_touchpad_surface)
-                        DeviceWebSocket.sendTouchpadClick()
-                    }
-                    true
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    pendingDx = 0f
-                    pendingDy = 0f
-                    true
-                }
-                else -> true
-            }
-        }
-
-        var lastScrollY = 0f
-        var pendingScrollDy = 0f
-        var lastScrollDispatch = 0L
-
-        fun flushScroll(force: Boolean = false) {
-            val now = System.currentTimeMillis()
-            if (!force && now - lastScrollDispatch < 24) return
-            if (pendingScrollDy != 0f) DeviceWebSocket.sendTouchpadScroll(pendingScrollDy)
-            pendingScrollDy = 0f
-            lastScrollDispatch = now
-        }
-
-        scrollStrip.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    lastScrollY = event.y
-                    pendingScrollDy = 0f
-                    scrollStrip.background = getDrawable(R.drawable.bg_touchpad_scroll_strip_pressed)
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    pendingScrollDy += event.y - lastScrollY
-                    lastScrollY = event.y
-                    flushScroll()
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    flushScroll(force = true)
-                    scrollStrip.background = getDrawable(R.drawable.bg_touchpad_scroll_strip)
-                    true
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    pendingScrollDy = 0f
-                    scrollStrip.background = getDrawable(R.drawable.bg_touchpad_scroll_strip)
-                    true
-                }
-                else -> true
-            }
-        }
+        surface.onReconnect = { VectrForegroundService.reconnect(this) }
     }
 
     private fun flashTouchpadView(view: View, pressedBackground: Int, defaultBackground: Int) {
@@ -1409,6 +1655,8 @@ class MainActivity : ComponentActivity() {
             Screen.VOYAGE -> R.string.nav_home
             Screen.WANTED -> R.string.nav_home
             Screen.GOALS -> R.string.nav_home
+            Screen.CGPA -> R.string.nav_home
+            Screen.CLIPBOARD_HISTORY -> R.string.nav_home
             Screen.SETTINGS -> R.string.nav_settings
         },
     )

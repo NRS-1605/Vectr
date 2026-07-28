@@ -3,6 +3,7 @@ const { MESSAGE_TYPES, createMessage } = require("../../shared/message-contract"
 const { executeMacro } = require("../routes/macro");
 const { input } = require("../platform");
 const { checkAndChargeGate } = require("../economy");
+const { saveEntry } = require("../clipboard-history");
 
 function numericDelta(value) {
   const number = Number(value);
@@ -108,9 +109,15 @@ function setupWebSocketServer(server, handlers = {}) {
 
       if (parsed?.type === "clipboard.update") {
         const text = parsed?.payload?.text;
-        if (parsed?.payload?.source === "phone" && typeof text === "string" && typeof handlers.writePhoneClipboard === "function") {
-          handlers.writePhoneClipboard(text)
-            .catch((error) => console.error(`[clipboard] phone update failed: ${error.message}`));
+        const source = parsed?.payload?.source === "phone" ? "phone" : "laptop";
+        console.log(`[clipboard] WS update: source=${source}, text="${(text||"").substring(0,80)}...", hasWriteHandler=${typeof handlers.writePhoneClipboard}`);
+        if (typeof text === "string") {
+          try { saveEntry(text, source); } catch (error) { console.error(`[clipboard] failed to save history: ${error.message}`); }
+          broadcastMessage(wss, createMessage("clipboard.history", { entry: { text, source, timestamp: new Date().toISOString() } }, "axon-core"));
+          if (source === "phone" && typeof handlers.writePhoneClipboard === "function") {
+            handlers.writePhoneClipboard(text)
+              .catch((error) => console.error(`[clipboard] phone update failed: ${error.message}`));
+          }
         }
         return;
       }

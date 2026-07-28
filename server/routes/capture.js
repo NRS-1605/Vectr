@@ -8,6 +8,7 @@ const { promisify } = require("util");
 const { createMessage } = require("../../shared/message-contract");
 const { broadcastMessage } = require("../ws");
 const { storage } = require("../storage");
+const { saveLecture, resolveSubjectFromSchedWall } = require("../lecture-pipeline");
 
 const notesDirectory = storage.captureNotes;
 const attachmentsDirectory = storage.captureAttachments;
@@ -251,9 +252,22 @@ function createCaptureRoutes(captureService) {
     }
     try {
       const transcript = await transcribeVoice(req.file.buffer);
+      if (req.body?.lecture === "true") {
+        let subject = typeof req.body?.subject === "string" && req.body.subject.trim() ? req.body.subject.trim() : null;
+        if (!subject) {
+          const resolved = await resolveSubjectFromSchedWall();
+          if (resolved) subject = resolved.subject;
+        }
+        if (!subject) return res.status(400).json({ error: "No subject specified and no timetable slot matches the current time." });
+        const date = typeof req.body?.date === "string" && req.body.date.trim() ? req.body.date.trim() : new Date().toISOString().slice(0, 10);
+        const result = await saveLecture(subject, date, transcript, {
+          title: req.body?.heading || `${subject} — ${date}`,
+          audioFilename: req.file.originalname || null,
+          slot: req.body?.slot || null,
+        });
+        return res.status(201).json({ transcript, lecture: result });
+      }
       const heading = typeof req.body?.heading === "string" && req.body.heading.trim() ? req.body.heading : `Voice ${new Date().toLocaleString()}`;
-      // The phone requests transcription-only while the user is editing the
-      // generated capture. Queued uploads save immediately after reconnect.
       const capture = req.body?.save === "false" ? { heading, tag: "voice" } : await captureService.saveCapture({ heading, tag: "voice", body: transcript });
       return res.status(201).json({ transcript, capture });
     } catch (error) {

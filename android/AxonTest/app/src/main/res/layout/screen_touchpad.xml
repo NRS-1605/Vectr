@@ -1,37 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal"
-    android:padding="16dp">
+    android:background="@color/background_graphite">
 
-    <View
+    <com.vectr.TouchpadSurfaceView
         android:id="@+id/touchpad_surface"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:background="@drawable/bg_touchpad_surface"
-        android:contentDescription="@string/touchpad_surface" />
-
-    <View
-        android:id="@+id/touchpad_scroll_strip"
-        android:layout_width="44dp"
-        android:layout_height="match_parent"
-        android:layout_marginStart="8dp"
-        android:background="@drawable/bg_touchpad_scroll_strip"
-        android:contentDescription="@string/touchpad_scroll_strip" />
-
-    <TextView
-        android:id="@+id/right_click_button"
-        android:layout_width="84dp"
-        android:layout_height="match_parent"
-        android:layout_marginStart="14dp"
-        android:background="@drawable/bg_right_click"
-        android:clickable="true"
-        android:focusable="true"
-        android:gravity="center"
-        android:letterSpacing="0.08"
-        android:text="@string/right_click"
-        android:textColor="@color/text_primary"
-        android:textSize="13sp" />
-</LinearLayout>
+        android:layout_margin="20dp"
+        android:contentDescription="Remote touchpad" />
+</FrameLayout>

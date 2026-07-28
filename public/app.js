@@ -50,6 +50,7 @@
     telemetryGpuTempLabel: document.querySelector("#telemetry-gpu-temp-label"),
     todoList: document.querySelector("#todo-list"), todoForm: document.querySelector("#todo-form"), todoInput: document.querySelector("#todo-input"), clearTodos: document.querySelector("#clear-todos"),
     pointsBalance: document.querySelector("#points-balance"), pointsAllowance: document.querySelector("#points-allowance"), pointsStatus: document.querySelector("#points-status"), voyageHistory: document.querySelector("#voyage-history"), savePointsSettings: document.querySelector("#save-points-settings"), resetPoints: document.querySelector("#reset-points"),
+    clipboardList: document.querySelector("#clipboard-list"), clearClipboard: document.querySelector("#clear-clipboard-history"),
   };
 
   function socketUrl() {
@@ -336,6 +337,71 @@
   async function loadTodos() { try { const response = await fetch("/api/todos"); if (!response.ok) throw new Error(); renderTodos(await response.json()); } catch (_) { elements.todoList.textContent = "Could not load todos."; } }
   async function todoRequest(url, method, body) { const response = await fetch(url, { method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined }); if (!response.ok) await loadTodos(); }
 
+  function formatClipboardTime(timestamp) {
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
+  }
+
+  function renderClipboard(entries) {
+    elements.clipboardList.replaceChildren();
+    if (!entries || !entries.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "No clipboard entries yet.";
+      elements.clipboardList.append(empty);
+      return;
+    }
+    entries.forEach((entry) => {
+      const card = document.createElement("article");
+      card.className = "clipboard-card";
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      const source = document.createElement("span");
+      source.className = `clipboard-source clipboard-source--${entry.source}`;
+      source.textContent = entry.source === "laptop" ? "LAPTOP" : "MOBILE";
+      const text = document.createElement("p");
+      text.className = "clipboard-text";
+      text.textContent = entry.text;
+      const time = document.createElement("time");
+      time.className = "clipboard-time";
+      time.textContent = formatClipboardTime(entry.timestamp);
+      card.append(source, text, time);
+      card.addEventListener("click", () => copyClipboardEntry(entry));
+      card.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); copyClipboardEntry(entry); } });
+      elements.clipboardList.append(card);
+    });
+  }
+
+  function copyClipboardEntry(entry) {
+    navigator.clipboard.writeText(entry.text).then(() => {
+      const toast = document.createElement("div");
+      toast.className = "clipboard-toast";
+      toast.textContent = "Copied to clipboard";
+      document.body.append(toast);
+      window.setTimeout(() => toast.remove(), 1500);
+    }).catch(() => {
+      const toast = document.createElement("div");
+      toast.className = "clipboard-toast clipboard-toast--error";
+      toast.textContent = "Could not copy";
+      document.body.append(toast);
+      window.setTimeout(() => toast.remove(), 1500);
+    });
+  }
+
+  async function loadClipboard() {
+    try {
+      const response = await fetch("/api/clipboard/history");
+      if (!response.ok) throw new Error("Could not load clipboard history.");
+      renderClipboard(await response.json());
+    } catch (_) {
+      elements.clipboardList.replaceChildren();
+      const message = document.createElement("p");
+      message.className = "empty-state";
+      message.textContent = "Could not load clipboard history.";
+      elements.clipboardList.append(message);
+    }
+  }
+
   function addFeedRow(url = "") {
     const row = document.createElement("div");
     row.className = "feed-row";
@@ -381,6 +447,12 @@
     if (message.type === "file.received" && typeof message.payload?.filename === "string") showFileNotification(message.payload.filename);
     if (message.type === "telemetry.update") renderTelemetry(message.payload);
     if (message.type === "todos.update" && Array.isArray(message.payload?.items)) renderTodos(message.payload.items);
+    if (message.type === "clipboard.history" && message.payload?.entry) {
+      const tab = document.querySelector("#clipboard-tab");
+      if (tab?.classList.contains("is-active")) {
+        loadClipboard();
+      }
+    }
     renderLog();
   }
 
@@ -523,6 +595,12 @@
   elements.savePointsSettings.addEventListener("click", async () => { const body = { voyageRewards: { coastal: +pointInputs.coastal.value, open_waters: +pointInputs.open_waters.value, uncharted: +pointInputs.uncharted.value }, abandonPenaltyPercent: +document.querySelector("#abandon-penalty").value, dailyFreeAllowance: +document.querySelector("#daily-free").value, featureCosts: { touchpad: +pointInputs.touchpad.value, macros: +pointInputs.macros.value, files: +pointInputs.files.value, telemetry: +pointInputs.telemetry.value, news: +pointInputs.news.value } }; const response = await fetch("/api/points/config", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) }); elements.pointsStatus.textContent = response.ok ? "Saved" : "Could not save settings"; });
   elements.resetPoints.addEventListener("click", async () => { if (!confirm("Reset all Berries to zero?")) return; await fetch("/api/points/reset", { method:"POST" }); loadPoints(); });
 
+  elements.clearClipboard.addEventListener("click", async () => {
+    if (!confirm("Clear all clipboard history?")) return;
+    await fetch("/api/clipboard/clear", { method: "POST" });
+    loadClipboard();
+  });
+
   elements.addFeed.addEventListener("click", () => addFeedRow());
   elements.saveFeeds.addEventListener("click", async () => {
     const feeds = [...elements.feedList.querySelectorAll(".feed-input")].map((input) => input.value.trim()).filter(Boolean);
@@ -558,6 +636,10 @@
     } catch (error) { elements.llmTestStatus.classList.add("is-error"); elements.llmTestStatus.textContent = error.message; }
     finally { elements.runLlmTest.disabled = false; }
   });
+
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
+    if (t.id === "clipboard-tab") loadClipboard();
+  }));
 
   Promise.all([loadCaptures(), loadMacros(), loadLlmConfig(), loadFeeds(), loadTodos(), loadPoints()]).finally(connect);
 })();

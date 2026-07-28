@@ -17,6 +17,9 @@ const { createTodoRoutes } = require("./routes/todos");
 const { createSchedWallRoutes } = require("./routes/schedwall");
 const { createPointsRoutes } = require("./routes/points");
 const { createInventoryRoutes } = require("./routes/inventory");
+const { createClipboardRoutes } = require("./routes/clipboard");
+const { saveEntry } = require("./clipboard-history");
+const { createLectureRoutes } = require("./routes/lecture");
 const Bonjour = require("bonjour");
 const platform = require("./platform");
 const { prepareStorage } = require("./storage");
@@ -53,7 +56,11 @@ wsHandlers.onSubscriptionChange = (subscription, subscribed) => {
 const captureService = createCaptureService(wss);
 wsHandlers.saveDeviceCapture = captureService.saveCapture;
 const clipboardSync = new platform.ClipboardSync((text) => {
+  console.log(`[clipboard] laptop change detected: "${text.substring(0, 80)}..."`);
+  try { saveEntry(text, "laptop"); } catch (error) { console.error(`[clipboard] failed to save history: ${error.message}`); }
+  console.log(`[clipboard] broadcasting to ${wss.clients.size} clients`);
   broadcastMessage(wss, createMessage("clipboard.update", { text, source: "laptop" }, "axon-core"));
+  broadcastMessage(wss, createMessage("clipboard.history", { entry: { text, source: "laptop", timestamp: new Date().toISOString() } }, "axon-core"));
 });
 wsHandlers.writePhoneClipboard = (text) => clipboardSync.writeFromPhone(text);
 app.use("/api", createCaptureRoutes(captureService));
@@ -66,6 +73,8 @@ app.use("/api", createTodoRoutes(wss));
 app.use("/api/schedwall", createSchedWallRoutes(wss));
 app.use("/api", createPointsRoutes());
 app.use("/api", createInventoryRoutes());
+app.use("/api", createClipboardRoutes());
+app.use("/api", createLectureRoutes());
 app.get("/schedwall", (_req, res) => res.redirect("/schedwall/admin"));
 app.get("/schedwall/admin", (_req, res) => res.sendFile(assetPath("SchedWall", "views", "admin.html")));
 app.get("/schedwall/wallpaper", (_req, res) => res.sendFile(assetPath("SchedWall", "views", "wallpaper.html")));
