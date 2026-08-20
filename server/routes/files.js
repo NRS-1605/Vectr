@@ -5,7 +5,6 @@ const path = require("path");
 const multer = require("multer");
 const { createMessage } = require("../../shared/message-contract");
 const { broadcastMessage } = require("../ws");
-const { gate } = require("./points");
 const { storage } = require("../storage");
 
 const incomingDirectory = storage.filesIncoming;
@@ -57,7 +56,7 @@ function createFileRoutes(wss) {
     }
   });
 
-  router.get("/files/list", gate("files"), async (req, res, next) => {
+  router.get("/files/list", async (req, res, next) => {
     try {
       let entries;
       try { entries = await fsp.readdir(outgoingDirectory, { withFileTypes: true }); } catch (error) {
@@ -72,7 +71,7 @@ function createFileRoutes(wss) {
     } catch (error) { return next(error); }
   });
 
-  router.get("/files/download/:filename", gate("files"), async (req, res, next) => {
+  router.get("/files/download/:filename", async (req, res, next) => {
     const filename = safeFilename(req.params.filename);
     if (!filename || filename !== req.params.filename) return res.status(400).json({ error: "Invalid filename." });
     const filePath = path.join(outgoingDirectory, filename);

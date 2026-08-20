@@ -1,7 +1,6 @@
 const express = require("express");
 const fs = require("fs/promises");
 const Parser = require("rss-parser");
-const { gate } = require("./points");
 const { configPath } = require("../runtime-paths");
 
 const CONFIG_PATH = configPath;
@@ -85,7 +84,7 @@ function createNewsRoutes() {
     } catch (error) { return next(error); }
   });
 
-  router.get("/news", gate("news"), async (req, res, next) => {
+  router.get("/news", async (req, res, next) => {
     try { res.json(await fetchNews()); } catch (error) { next(error); }
   });
   return router;

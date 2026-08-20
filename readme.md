@@ -85,8 +85,6 @@ The home screen shows a green connection indicator when paired.
 |--------|-------------|
 | **Telemetry** | Live CPU, RAM, temperature, and GPU usage from the laptop. |
 | **News** | Headlines from configured RSS feeds. |
-| **Focus Session** | Timed work sessions that earn **Berries** (local gamified reward balance). Choose Coastal (30 min), Open Waters (1 hr), or Uncharted (2 hr). |
-| **Berries** | Virtual currency earned by completing focus sessions. Spent on premium features (Touchpad, Macros, Telemetry, Files, News). First use each day is free. |
 
 ---
 
@@ -125,7 +123,6 @@ The web admin console at `http://<laptop-ip>:4101` provides:
 - **Telemetry** — live CPU/RAM/temperature charts
 - **Todo** — add and manage shared tasks
 - **SchedWall** — one-off schedule overlays
-- **Voyages** — view Berry balance and focus session history
 - **Clipboard** — clipboard history from all devices
 - **Settings** — macro buttons, LLM config (local Ollama or OpenAI), RSS feeds
 
@@ -147,7 +144,7 @@ The web admin console at `http://<laptop-ip>:4101` provides:
 │   │   └── README.md
 │   ├── computer-science/
 │   └── ...
-└── axon-core.sqlite          database (voyages, clipboard history, todos, etc.)
+└── axon-core.sqlite          database (clipboard history, todos, inventory, etc.)
 ```
 
 ---
@@ -160,7 +157,7 @@ The web admin console at `http://<laptop-ip>:4101` provides:
 |-------|-----------|
 | HTTP | Express 4 — REST API on port 4101 |
 | Real-time | WebSocket (`ws`) — subscriptions for touchpad, macros, telemetry |
-| Database | SQLite (via better-sqlite3 bindings in `economy.js`) |
+| Database | SQLite (via `node:sqlite` bindings in `db.js`) |
 | Discovery | mDNS via `bonjour` — advertises as `_vectr._tcp` |
 | Voice | Shells out to local `whisper.cpp` binary |
 | Audio routing | `multer` for multipart file uploads |
@@ -191,7 +188,7 @@ Messages follow a uniform shape:
 }
 ```
 
-Subscriptions (touchpad, macro, telemetry) require a subscribe/unsubscribe handshake before sending commands, enforced by a per-client subscription set on the server. Feature usage is gated by the Berry economy — the server checks `checkAndChargeGate()` before activating a subscription.
+Subscriptions (touchpad, macro, telemetry) require a subscribe/unsubscribe handshake before sending commands, enforced by a per-client subscription set on the server.
 
 ### Key Design Decisions
 
@@ -235,7 +232,7 @@ VeCTR/
 │   ├── routes/            API route handlers
 │   ├── platform/          Linux/Windows platform adapters
 │   ├── ws/                WebSocket server
-│   ├── economy.js         Berry economy + SQLite schema
+│   ├── db.js              SQLite connection + schema
 │   ├── lecture-pipeline.js   Voice → transcript → Markdown
 │   └── storage.js         Filesystem storage setup
 ├── android/AxonTest/      Android companion app

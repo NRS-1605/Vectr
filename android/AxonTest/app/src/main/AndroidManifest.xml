@@ -40,7 +40,6 @@
             android:launchMode="singleTop"
             android:noHistory="true"
             android:theme="@style/Theme.Vectr.CaptureOverlay" />
-        <activity android:name=".FocusSessionActivity" android:exported="false" android:screenOrientation="portrait" android:theme="@style/Theme.Vectr" />
         <receiver
             android:name=".CaptureWidgetProvider"
             android:exported="false"

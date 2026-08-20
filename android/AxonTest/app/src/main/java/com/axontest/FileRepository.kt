@@ -87,12 +87,12 @@ object FileRepository {
     }
 
     fun fetchFiles(onSuccess: (List<TransferFile>) -> Unit, onError: (String) -> Unit) {
-        val request = try { Request.Builder().url(DeviceWebSocket.apiUrl("/api/files/list")).header("x-vectr-session", DeviceWebSocket.featureSessionId("files")).header("x-vectr-device", DeviceWebSocket.deviceIdentity()).build() }
+        val request = try { Request.Builder().url(DeviceWebSocket.apiUrl("/api/files/list")).build() }
         catch (error: Exception) { return cachedFiles(onSuccess, onError, error.message ?: "Could not load files") }
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) = cachedFiles(onSuccess, onError, error.message ?: "Could not load files")
             override fun onResponse(call: Call, response: Response) = response.use {
-                if (!it.isSuccessful) return cachedFiles(onSuccess, onError, if (it.code == 402) "gate.denied" else "Could not load files (${it.code})")
+                if (!it.isSuccessful) return cachedFiles(onSuccess, onError, "Could not load files (${it.code})")
                 try {
                     val files = JSONArray(it.body?.string() ?: "[]")
                     onSuccess((0 until files.length()).map { index ->
@@ -112,10 +112,10 @@ object FileRepository {
 
     fun download(contentResolver: ContentResolver, file: TransferFile, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val url = DeviceWebSocket.apiUrl("/api/files/download/${Uri.encode(file.filename)}")
-        client.newCall(Request.Builder().url(url).header("x-vectr-session", DeviceWebSocket.featureSessionId("files")).header("x-vectr-device", DeviceWebSocket.deviceIdentity()).build()).enqueue(object : Callback {
+        client.newCall(Request.Builder().url(url).build()).enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) = onError(error.message ?: "Could not download file")
             override fun onResponse(call: Call, response: Response) = response.use {
-                if (!it.isSuccessful) return onError(if (it.code == 402) "gate.denied" else "Could not download file (${it.code})")
+                if (!it.isSuccessful) return onError("Could not download file (${it.code})")
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, file.filename)
                     put(MediaStore.Downloads.MIME_TYPE, response.header("Content-Type") ?: "application/octet-stream")

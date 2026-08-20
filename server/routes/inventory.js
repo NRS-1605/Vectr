@@ -3,7 +3,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
 const multer = require("multer");
-const { db } = require("../economy");
+const { db } = require("../db");
 const { storage } = require("../storage");
 
 const photosDirectory = storage.inventoryPhotos;

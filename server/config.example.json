@@ -1,12 +1,16 @@
 {
-  "berryEconomy": {
-    "voyageRewards": { "coastal": 600, "open_waters": 1500, "uncharted": 3000 },
-    "abandonPenaltyPercent": 20,
-    "featureCosts": { "touchpad": 150, "macros": 100, "files": 80, "telemetry": 50, "news": 50 },
-    "dailyFreeAllowance": 3,
-    "customMarginalRatePerMinute": 40,
-    "customMinimumDurationSeconds": 5400
-  },
   "feeds": [],
-  "macros": []
+  "macroPresets": {
+    "General": [
+      { "id": 1, "label": "Macro 1", "type": "shell", "command": "" },
+      { "id": 2, "label": "Macro 2", "type": "shell", "command": "" },
+      { "id": 3, "label": "Macro 3", "type": "shell", "command": "" },
+      { "id": 4, "label": "Macro 4", "type": "shell", "command": "" },
+      { "id": 5, "label": "Macro 5", "type": "shell", "command": "" },
+      { "id": 6, "label": "Macro 6", "type": "shell", "command": "" },
+      { "id": 7, "label": "Macro 7", "type": "shell", "command": "" },
+      { "id": 8, "label": "Macro 8", "type": "shell", "command": "" }
+    ]
+  },
+  "activeMacroPreset": "General"
 }

@@ -15,7 +15,6 @@ const { createTelemetryService, createTelemetryRoutes } = require("./routes/tele
 const { createNewsRoutes } = require("./routes/news");
 const { createTodoRoutes } = require("./routes/todos");
 const { createSchedWallRoutes } = require("./routes/schedwall");
-const { createPointsRoutes } = require("./routes/points");
 const { createInventoryRoutes } = require("./routes/inventory");
 const { createClipboardRoutes } = require("./routes/clipboard");
 const { saveEntry } = require("./clipboard-history");
@@ -71,7 +70,6 @@ app.use("/api", createTelemetryRoutes(telemetryService));
 app.use("/api", createNewsRoutes());
 app.use("/api", createTodoRoutes(wss));
 app.use("/api/schedwall", createSchedWallRoutes(wss));
-app.use("/api", createPointsRoutes());
 app.use("/api", createInventoryRoutes());
 app.use("/api", createClipboardRoutes());
 app.use("/api", createLectureRoutes());

@@ -2,7 +2,6 @@ const WebSocket = require("ws");
 const { MESSAGE_TYPES, createMessage } = require("../../shared/message-contract");
 const { executeMacro } = require("../routes/macro");
 const { input } = require("../platform");
-const { checkAndChargeGate } = require("../economy");
 const { saveEntry } = require("../clipboard-history");
 
 function numericDelta(value) {
@@ -41,8 +40,8 @@ function setupWebSocketServer(server, handlers = {}) {
     const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     const deviceId = requestUrl.searchParams.get("deviceId") || "unknown";
     const subscriptions = new Set();
-    // Subscription checks can touch disk/database state. Process one message at
-    // a time so a fast first swipe cannot overtake its own subscribe request.
+    // Process one message at a time so a fast first swipe cannot overtake its
+    // own subscribe request.
     let messageQueue = Promise.resolve();
 
     async function handleMessage(rawMessage) {
@@ -59,15 +58,6 @@ function setupWebSocketServer(server, handlers = {}) {
         const [, subscription, action] = subscriptionMatch;
         const subscribing = action === "subscribe";
         const changed = subscribing ? !subscriptions.has(subscription) : subscriptions.has(subscription);
-        if (subscribing && changed) {
-          const feature = subscription === "macro" ? "macros" : subscription;
-          const sessionId = String(parsed?.payload?.sessionId || "");
-          const gate = await checkAndChargeGate(feature, `${deviceId}:${feature}:${sessionId}`, deviceId);
-          if (!gate.allowed) {
-            ws.send(JSON.stringify(createMessage("gate.denied", { feature, balance: gate.newBalance, cost: gate.cost }, "axon-core")));
-            return;
-          }
-        }
         if (subscribing) subscriptions.add(subscription);
         else subscriptions.delete(subscription);
         if (changed && typeof handlers.onSubscriptionChange === "function") {

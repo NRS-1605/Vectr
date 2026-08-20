@@ -1,4 +1,4 @@
-const { db } = require("./economy");
+const { db } = require("./db");
 
 db.exec(`CREATE TABLE IF NOT EXISTS clipboard_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, source TEXT NOT NULL CHECK(source IN ('laptop','phone')), timestamp TEXT NOT NULL

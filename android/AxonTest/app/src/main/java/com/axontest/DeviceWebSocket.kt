@@ -11,7 +11,6 @@ import org.json.JSONObject
 import java.util.UUID
 
 object DeviceWebSocket {
-    private val featureSessions = mutableMapOf<String, String>()
     data class Endpoint(val host: String, val port: Int)
 
     private const val DEFAULT_PORT = 4101
@@ -96,16 +95,12 @@ object DeviceWebSocket {
         return socket.send(
             JSONObject()
                 .put("type", "$screen.$action")
-                .put("payload", JSONObject().put("sessionId", featureSessionId(if (screen == "macro") "macros" else screen)))
+                .put("payload", JSONObject())
                 .put("deviceId", deviceId)
                 .put("timestamp", System.currentTimeMillis())
                 .toString(),
         )
     }
-
-    fun beginFeatureSession(feature: String) { featureSessions[feature] = UUID.randomUUID().toString() }
-    fun endFeatureSession(feature: String) { featureSessions.remove(feature) }
-    fun featureSessionId(feature: String): String = featureSessions.getOrPut(feature) { UUID.randomUUID().toString() }
 
     fun sendMacroTrigger(buttonId: Int, requestId: String, onError: (String) -> Unit) {
         val socket = statusSocket

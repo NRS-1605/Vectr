@@ -7,6 +7,7 @@
   let reconnectTimer;
   let reconnectDelay = 1000;
   let telemetrySubscribed = false;
+  let currentMacroPreset = null;
 
   const elements = {
     indicator: document.querySelector("#connection-indicator"),
@@ -26,6 +27,10 @@
     macroList: document.querySelector("#macro-list"),
     macroStatus: document.querySelector("#macro-status"),
     saveMacros: document.querySelector("#save-macros"),
+    macroPresetSelect: document.querySelector("#macro-preset-select"),
+    addMacroPreset: document.querySelector("#add-macro-preset"),
+    renameMacroPreset: document.querySelector("#rename-macro-preset"),
+    deleteMacroPreset: document.querySelector("#delete-macro-preset"),
     feedList: document.querySelector("#feed-list"),
     addFeed: document.querySelector("#add-feed"),
     saveFeeds: document.querySelector("#save-feeds"),
@@ -49,7 +54,6 @@
     telemetryGpuTempGauge: document.querySelector("#telemetry-gpu-temp-gauge"),
     telemetryGpuTempLabel: document.querySelector("#telemetry-gpu-temp-label"),
     todoList: document.querySelector("#todo-list"), todoForm: document.querySelector("#todo-form"), todoInput: document.querySelector("#todo-input"), clearTodos: document.querySelector("#clear-todos"),
-    pointsBalance: document.querySelector("#points-balance"), pointsAllowance: document.querySelector("#points-allowance"), pointsStatus: document.querySelector("#points-status"), voyageHistory: document.querySelector("#voyage-history"), savePointsSettings: document.querySelector("#save-points-settings"), resetPoints: document.querySelector("#reset-points"),
     clipboardList: document.querySelector("#clipboard-list"), clearClipboard: document.querySelector("#clear-clipboard-history"),
   };
 
@@ -91,9 +95,6 @@
   function compactJson(value) {
     try { return JSON.stringify(value); } catch (_) { return String(value); }
   }
-  function formatBerries(value) { const n = Number(value) || 0; const short = Math.abs(n) < 1000 ? String(n) : `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`; return `${short} Berries`; }
-  const pointInputs = { coastal: document.querySelector("#reward-coastal"), open_waters: document.querySelector("#reward-open-waters"), uncharted: document.querySelector("#reward-uncharted"), touchpad: document.querySelector("#cost-touchpad"), macros: document.querySelector("#cost-macros"), files: document.querySelector("#cost-files"), telemetry: document.querySelector("#cost-telemetry"), news: document.querySelector("#cost-news") };
-  async function loadPoints() { try { const [balanceResponse, configResponse, historyResponse] = await Promise.all([fetch("/api/points/balance"), fetch("/api/points/config"), fetch("/api/voyages/history")]); const balance = await balanceResponse.json(); elements.pointsBalance.textContent = formatBerries(balance.balance); elements.pointsAllowance.textContent = `${balance.firstUseFreeRemaining ?? balance.freeAllowanceRemainingToday} first-use passes remaining`; const cfg = await configResponse.json(); ["coastal","open_waters","uncharted"].forEach((key) => { pointInputs[key].value = cfg.voyageRewards[key]; }); ["touchpad","macros","files","telemetry","news"].forEach((key) => { pointInputs[key].value = cfg.featureCosts[key]; }); document.querySelector("#abandon-penalty").value = cfg.abandonPenaltyPercent; document.querySelector("#daily-free").value = 1; const history = await historyResponse.json(); elements.voyageHistory.replaceChildren(...history.map((voyage) => { const row = document.createElement("div"); row.className = "voyage-row"; row.innerHTML = `<span><strong>${voyage.duration_tier.replace("_", " ")}</strong> · ${voyage.status}</span><span>${formatBerries(voyage.berries_awarded || 0)} · ${new Date(voyage.start_time).toLocaleString()}</span>`; return row; })); } catch (error) { elements.pointsStatus.textContent = error.message; elements.pointsStatus.classList.add("is-error"); } }
 
   const telemetryHistory = { cpu: [], ram: [], gpu: [] };
   let telemetryCharts;
@@ -297,9 +298,26 @@
     });
   }
 
-  async function loadMacros() {
+  function populatePresetSelect(presets, active) {
+    elements.macroPresetSelect.replaceChildren();
+    presets.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name === active ? `${name} (active)` : name;
+      elements.macroPresetSelect.append(option);
+    });
+    elements.macroPresetSelect.value = active;
+  }
+
+  function setMacroStatus(message, isError = false) {
+    elements.macroStatus.classList.toggle("is-error", isError);
+    elements.macroStatus.textContent = message;
+  }
+
+  async function loadMacros(presetName) {
     try {
-      const response = await fetch("/api/macro/config");
+      const query = presetName ? `?preset=${encodeURIComponent(presetName)}` : "";
+      const response = await fetch(`/api/macro/config${query}`);
       if (!response.ok) throw new Error("Could not load macro configuration.");
       const macros = await response.json();
       renderMacros(macros);
@@ -310,6 +328,30 @@
       message.textContent = "Could not load macro configuration.";
       elements.macroList.append(message);
     }
+  }
+
+  async function loadMacroPresets() {
+    try {
+      const response = await fetch("/api/macro/presets");
+      if (!response.ok) throw new Error("Could not load macro presets.");
+      const { presets, active } = await response.json();
+      currentMacroPreset = active;
+      populatePresetSelect(presets, active);
+      await loadMacros(active);
+    } catch (_) {
+      elements.macroList.replaceChildren();
+      const message = document.createElement("p");
+      message.className = "empty-state";
+      message.textContent = "Could not load macro configuration.";
+      elements.macroList.append(message);
+    }
+  }
+
+  async function activateMacroPreset(name) {
+    const response = await fetch(`/api/macro/presets/${encodeURIComponent(name)}/activate`, { method: "POST" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || "Could not activate preset.");
+    return body;
   }
 
   async function loadLlmConfig() {
@@ -557,23 +599,90 @@
       command: row.querySelector(".macro-command").value,
     }));
     elements.saveMacros.disabled = true;
-    elements.macroStatus.classList.remove("is-error");
-    elements.macroStatus.textContent = "Saving…";
+    setMacroStatus("Saving…");
     try {
       const response = await fetch("/api/macro/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ macros }),
+        body: JSON.stringify({ macros, preset: currentMacroPreset || undefined }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Could not save macros.");
-      elements.macroStatus.textContent = "Saved";
-      window.setTimeout(() => { elements.macroStatus.textContent = ""; }, 2200);
+      setMacroStatus("Saved");
+      window.setTimeout(() => { setMacroStatus(""); }, 2200);
     } catch (error) {
-      elements.macroStatus.classList.add("is-error");
-      elements.macroStatus.textContent = error.message || "Could not save macros.";
+      setMacroStatus(error.message || "Could not save macros.", true);
     } finally {
       elements.saveMacros.disabled = false;
+    }
+  });
+
+  elements.macroPresetSelect.addEventListener("change", async () => {
+    const name = elements.macroPresetSelect.value;
+    if (!name || name === currentMacroPreset) return;
+    try {
+      const body = await activateMacroPreset(name);
+      currentMacroPreset = body.active;
+      populatePresetSelect(body.presets, body.active);
+      await loadMacros(body.active);
+    } catch (error) {
+      elements.macroPresetSelect.value = currentMacroPreset;
+      setMacroStatus(error.message || "Could not activate preset.", true);
+    }
+  });
+
+  elements.addMacroPreset.addEventListener("click", async () => {
+    const name = prompt("New preset name:");
+    if (!name || !name.trim()) return;
+    try {
+      const response = await fetch("/api/macro/presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Could not create preset.");
+      currentMacroPreset = body.active;
+      populatePresetSelect(body.presets, body.active);
+      await loadMacros(body.active);
+    } catch (error) {
+      setMacroStatus(error.message || "Could not create preset.", true);
+    }
+  });
+
+  elements.renameMacroPreset.addEventListener("click", async () => {
+    const oldName = elements.macroPresetSelect.value;
+    if (!oldName) return;
+    const name = prompt(`Rename "${oldName}" to:`, oldName);
+    if (!name || !name.trim() || name.trim() === oldName) return;
+    try {
+      const response = await fetch(`/api/macro/presets/${encodeURIComponent(oldName)}/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Could not rename preset.");
+      currentMacroPreset = body.active;
+      populatePresetSelect(body.presets, body.active);
+      await loadMacros(body.active);
+    } catch (error) {
+      setMacroStatus(error.message || "Could not rename preset.", true);
+    }
+  });
+
+  elements.deleteMacroPreset.addEventListener("click", async () => {
+    const name = elements.macroPresetSelect.value;
+    if (!name || !confirm(`Delete preset "${name}"?`)) return;
+    try {
+      const response = await fetch(`/api/macro/presets/${encodeURIComponent(name)}`, { method: "DELETE" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Could not delete preset.");
+      currentMacroPreset = body.active;
+      populatePresetSelect(body.presets, body.active);
+      await loadMacros(body.active);
+    } catch (error) {
+      setMacroStatus(error.message || "Could not delete preset.", true);
     }
   });
 
@@ -592,9 +701,6 @@
 
   elements.todoForm.addEventListener("submit", async (event) => { event.preventDefault(); const text = elements.todoInput.value.trim(); if (!text) return; await todoRequest("/api/todos", "POST", { text }); elements.todoInput.value = ""; });
   elements.clearTodos.addEventListener("click", () => todoRequest("/api/todos/clear", "POST"));
-  elements.savePointsSettings.addEventListener("click", async () => { const body = { voyageRewards: { coastal: +pointInputs.coastal.value, open_waters: +pointInputs.open_waters.value, uncharted: +pointInputs.uncharted.value }, abandonPenaltyPercent: +document.querySelector("#abandon-penalty").value, dailyFreeAllowance: +document.querySelector("#daily-free").value, featureCosts: { touchpad: +pointInputs.touchpad.value, macros: +pointInputs.macros.value, files: +pointInputs.files.value, telemetry: +pointInputs.telemetry.value, news: +pointInputs.news.value } }; const response = await fetch("/api/points/config", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) }); elements.pointsStatus.textContent = response.ok ? "Saved" : "Could not save settings"; });
-  elements.resetPoints.addEventListener("click", async () => { if (!confirm("Reset all Berries to zero?")) return; await fetch("/api/points/reset", { method:"POST" }); loadPoints(); });
-
   elements.clearClipboard.addEventListener("click", async () => {
     if (!confirm("Clear all clipboard history?")) return;
     await fetch("/api/clipboard/clear", { method: "POST" });
@@ -641,5 +747,5 @@
     if (t.id === "clipboard-tab") loadClipboard();
   }));
 
-  Promise.all([loadCaptures(), loadMacros(), loadLlmConfig(), loadFeeds(), loadTodos(), loadPoints()]).finally(connect);
+  Promise.all([loadCaptures(), loadMacroPresets(), loadLlmConfig(), loadFeeds(), loadTodos()]).finally(connect);
 })();

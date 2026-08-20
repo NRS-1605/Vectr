@@ -14,11 +14,11 @@ object NewsRepository {
     private val client = OkHttpClient()
 
     fun fetch(onSuccess: (List<NewsEntry>) -> Unit, onError: (String) -> Unit) {
-        val request = Request.Builder().url(DeviceWebSocket.apiUrl("/api/news")).header("x-vectr-session", DeviceWebSocket.featureSessionId("news")).header("x-vectr-device", DeviceWebSocket.deviceIdentity()).build()
+        val request = Request.Builder().url(DeviceWebSocket.apiUrl("/api/news")).build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) = onError(error.message ?: "Could not load news")
             override fun onResponse(call: Call, response: Response) = response.use {
-                if (!it.isSuccessful) return onError(if (it.code == 402) "gate.denied" else "Could not load news (${it.code})")
+                if (!it.isSuccessful) return onError("Could not load news (${it.code})")
                 try {
                     val entries = JSONArray(it.body?.string() ?: "[]")
                     onSuccess((0 until entries.length()).map { index -> entries.getJSONObject(index).let { item ->

@@ -1,4 +1,4 @@
-const MESSAGE_TYPES = Object.freeze(["PING", "PONG", "DATA", "STATUS", "test.ping", "capture.new", "capture.new_from_device", "file.received", "telemetry.update", "telemetry.subscribe", "telemetry.unsubscribe", "macro.subscribe", "macro.unsubscribe", "macro.trigger", "macro.result", "touchpad.subscribe", "touchpad.unsubscribe", "touchpad.move", "touchpad.click", "touchpad.scroll", "clipboard.update", "clipboard.history", "todos.update", "schedwall.state", "schedwall.scroll", "gate.denied"]);
+const MESSAGE_TYPES = Object.freeze(["PING", "PONG", "DATA", "STATUS", "test.ping", "capture.new", "capture.new_from_device", "file.received", "telemetry.update", "telemetry.subscribe", "telemetry.unsubscribe", "macro.subscribe", "macro.unsubscribe", "macro.trigger", "macro.result", "touchpad.subscribe", "touchpad.unsubscribe", "touchpad.move", "touchpad.click", "touchpad.scroll", "clipboard.update", "clipboard.history", "todos.update", "schedwall.state", "schedwall.scroll"]);
 
 const MESSAGE_SHAPE = Object.freeze({
   type: "string",

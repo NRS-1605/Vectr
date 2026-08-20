@@ -57,6 +57,7 @@
     <string name="disconnected">Disconnected</string>
     <string name="capture_title">CAPTURE</string>
     <string name="macro_activity">ACTIVITY</string>
+    <string name="macro_preset">PRESET</string>
     <string name="macro_timeout">No response after 3 seconds</string>
     <string name="macro_failed">Macro failed</string>
     <string name="touchpad_scroll_strip">Scroll strip</string>

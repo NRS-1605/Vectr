@@ -47,7 +47,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 class MainActivity : ComponentActivity() {
-    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TELEMETRY, NEWS, TODO, SPACE, SCHEDWALL, VOYAGE, WANTED, GOALS, CGPA, CLIPBOARD_HISTORY, SETTINGS }
+    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TELEMETRY, NEWS, TODO, SPACE, SCHEDWALL, GOALS, CGPA, CLIPBOARD_HISTORY, SETTINGS }
 
     private lateinit var content: View
     private lateinit var navButtons: Map<Screen, ImageButton>
@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private var connectionSource = "Discovering axon-core"
     private var macroGrid: LinearLayout? = null
     private var macroLog: LinearLayout? = null
+    private var activeMacroPreset: String? = null
     private val macros = mutableMapOf<Int, MacroConfig>()
     private val pendingMacros = mutableMapOf<String, PendingMacro>()
     private var capturePhoto: Bitmap? = null
@@ -74,19 +75,18 @@ class MainActivity : ComponentActivity() {
     private var lastConnectedAt = 0L
     private val homeModules = listOf(
         HomeModule("Capture", "Text, photo, and voice notes", Screen.CAPTURE, 2, R.drawable.ic_capture),
-        HomeModule("Macros", "Trigger keypresses and shell commands", Screen.MACROS, 1, R.drawable.ic_macros, berryCost = 100),
-        HomeModule("Touchpad", "Remote mouse, click, and scroll", Screen.TOUCHPAD, 1, R.drawable.ic_touchpad, berryCost = 150),
-        HomeModule("Files", "Send and receive files instantly", Screen.FILES, 2, R.drawable.ic_files, berryCost = 80),
+        HomeModule("Macros", "Trigger keypresses and shell commands", Screen.MACROS, 1, R.drawable.ic_macros),
+        HomeModule("Touchpad", "Remote mouse, click, and scroll", Screen.TOUCHPAD, 1, R.drawable.ic_touchpad),
+        HomeModule("Files", "Send and receive files instantly", Screen.FILES, 2, R.drawable.ic_files),
         HomeModule("Todo", "Shared checklist", Screen.TODO, 1, R.drawable.ic_todo),
         HomeModule("Clipboard", "Send copied text", null, 1, R.drawable.ic_clipboard, action = ::sendClipboardFromDevice),
-        HomeModule("Telemetry", "Live CPU, RAM, and temperature", Screen.TELEMETRY, 2, R.drawable.ic_telemetry, berryCost = 50),
-        HomeModule("News", "Headlines from your saved feeds", Screen.NEWS, 1, R.drawable.ic_news, berryCost = 50),
+        HomeModule("Telemetry", "Live CPU, RAM, and temperature", Screen.TELEMETRY, 2, R.drawable.ic_telemetry),
+        HomeModule("News", "Headlines from your saved feeds", Screen.NEWS, 1, R.drawable.ic_news),
         HomeModule("Space", "Browse saved captures", Screen.SPACE, 1, R.drawable.ic_space),
         HomeModule("SchedWall", "One-off schedule overlays", Screen.SCHEDWALL, 2, R.drawable.ic_schedwall_clean),
-        HomeModule("Focus Session", "Protect time and earn Berries", Screen.VOYAGE, 1, R.drawable.ic_focus),
         HomeModule("Inventory", "Food and medicine expiry tracker", Screen.INVENTORY, 1, R.drawable.ic_inventory),
         HomeModule("Goals", "Plan and connect your long-term goals", Screen.GOALS, 2, R.drawable.ic_focus),
-        HomeModule("CGPA", "Semester grade tracker", Screen.CGPA, 1, R.drawable.ic_berry),
+        HomeModule("CGPA", "Semester grade tracker", Screen.CGPA, 1, R.drawable.ic_focus),
         HomeModule("Clipboard History", "Copied text from all devices", Screen.CLIPBOARD_HISTORY, 1, R.drawable.ic_clipboard),
     )
 
@@ -97,7 +97,6 @@ class MainActivity : ComponentActivity() {
         val screen: Screen?,
         val span: Int,
         val icon: Int,
-        val berryCost: Int? = null,
         val action: (() -> Unit)? = null,
     )
 
@@ -149,7 +148,6 @@ class MainActivity : ComponentActivity() {
                     "clipboard.history" -> if (currentScreen == Screen.CLIPBOARD_HISTORY) clipboardHistoryRefresh()
                     "telemetry.update" -> recordTelemetry(payload)
                     "todos.update" -> if (currentScreen == Screen.TODO) payload.optJSONArray("items")?.let { renderTodos(TodoRepository.parse(it)) }
-                    "gate.denied" -> showGateDenied(payload)
                 }
             }
         }
@@ -163,7 +161,7 @@ class MainActivity : ComponentActivity() {
     private fun resetLocalDataForFreshInstall() {
         val marker = getSharedPreferences(FRESH_INSTALL_PREFS, MODE_PRIVATE)
         if (marker.getInt("version", 0) >= FRESH_INSTALL_VERSION) return
-        listOf(PREFS_NAME, "voyage_profile", "vectr_offline_captures", "vectr_schedwall_queue", "vectr_local_sync", "vectr_device").forEach { name -> getSharedPreferences(name, MODE_PRIVATE).edit().clear().apply() }
+        listOf(PREFS_NAME, "vectr_offline_captures", "vectr_schedwall_queue", "vectr_local_sync", "vectr_device").forEach { name -> getSharedPreferences(name, MODE_PRIVATE).edit().clear().apply() }
         cacheDir.deleteRecursively()
         marker.edit().putInt("version", FRESH_INSTALL_VERSION).apply()
     }
@@ -202,9 +200,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showScreen(screen: Screen) {
         clearScreenSubscription()
-        gateFeatureFor(currentScreen)?.let(DeviceWebSocket::endFeatureSession)
         currentScreen = screen
-        gateFeatureFor(screen)?.let(DeviceWebSocket::beginFeatureSession)
         requestedOrientation = if (screen == Screen.MACROS || screen == Screen.TOUCHPAD || screen == Screen.TELEMETRY) {
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         } else {
@@ -228,8 +224,6 @@ class MainActivity : ComponentActivity() {
             Screen.TODO -> R.layout.screen_todo
             Screen.SPACE -> R.layout.screen_space
             Screen.SCHEDWALL -> R.layout.screen_schedwall
-            Screen.VOYAGE -> R.layout.screen_voyage
-            Screen.WANTED -> R.layout.screen_wanted
             Screen.GOALS -> R.layout.screen_goals
             Screen.CGPA -> R.layout.screen_cgpa
             Screen.CLIPBOARD_HISTORY -> R.layout.screen_clipboard
@@ -249,23 +243,12 @@ class MainActivity : ComponentActivity() {
             Screen.TODO -> bindTodo(screenView)
             Screen.SPACE -> bindSpace(screenView)
             Screen.SCHEDWALL -> bindSchedWall(screenView)
-            Screen.VOYAGE -> bindVoyage(screenView)
-            Screen.WANTED -> bindWanted(screenView)
             Screen.GOALS -> bindGoals(screenView)
             Screen.CGPA -> bindCgpa(screenView)
             Screen.CLIPBOARD_HISTORY -> bindClipboardHistory(screenView)
             Screen.SETTINGS -> bindSettings(screenView)
         }
         updateScreenSubscription()
-    }
-
-    private fun gateFeatureFor(screen: Screen): String? = when (screen) {
-        Screen.MACROS -> "macros"
-        Screen.TOUCHPAD -> "touchpad"
-        Screen.FILES -> "files"
-        Screen.TELEMETRY -> "telemetry"
-        Screen.NEWS -> "news"
-        else -> null
     }
 
     private fun subscriptionFor(screen: Screen): String? = when (screen) {
@@ -311,7 +294,6 @@ class MainActivity : ComponentActivity() {
             })
         }
         val uptime = view.findViewById<TextView>(R.id.home_uptime); val seen = view.findViewById<TextView>(R.id.home_last_seen); val endpoint = view.findViewById<TextView>(R.id.home_endpoint)
-        VoyageRepository.balance({ amount -> runOnUiThread { view.findViewById<TextView>(R.id.home_bounty).text = "● ${BerryFormatter.format(amount)}" } }, { })
         val update = object : Runnable { override fun run() { val elapsed = (System.currentTimeMillis() - lastConnectedAt).coerceAtLeast(0); uptime.text = "UPTIME ${formatElapsed(elapsed)}"; seen.text = if (lastConnectedAt == 0L) "Last seen never" else "Last seen ${formatElapsed(elapsed)} ago"; endpoint.text = connectionSource; view.postDelayed(this, 1000) } }; update.run()
         updateConnectionIndicator()
         updatePendingSyncIndicator(OfflineCaptureQueue.count(this))
@@ -319,7 +301,7 @@ class MainActivity : ComponentActivity() {
             view.post {
                 AlertDialog.Builder(this)
                     .setTitle("Welcome to VeCTR")
-                    .setMessage("Connect to your computer, then choose a module below. Your first entry to each paid tool is free. Later entries spend Berries; complete a Voyage whenever you need more.")
+                    .setMessage("Connect to your computer, then choose a module below.")
                     .setPositiveButton("Get started") { _, _ -> getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_PRODUCT_ONBOARDING_SEEN, true).apply() }
                     .show()
             }
@@ -335,13 +317,6 @@ class MainActivity : ComponentActivity() {
         })
         addView(TextView(this@MainActivity).apply { text = module.title; textSize = 14f; setTextColor(getColor(R.color.text_primary)); setPadding(0, 4.dp, 0, 0) })
         addView(TextView(this@MainActivity).apply { text = module.description; textSize = 10f; setTextColor(getColor(R.color.text_muted)); maxLines = 1; setPadding(0, 2.dp, 0, 0) })
-        addView(TextView(this@MainActivity).apply {
-            text = module.berryCost?.let { "FIRST TRY FREE  •  THEN ${BerryFormatter.format(it)}" } ?: "FREE"
-            textSize = 10f
-            typeface = android.graphics.Typeface.MONOSPACE
-            setTextColor(getColor(if (module.berryCost == null) R.color.text_muted else R.color.accent_amber))
-            setPadding(0, 6.dp, 0, 0)
-        })
     }
     private fun formatElapsed(millis: Long): String { val seconds = millis / 1000; return "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60) }
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
@@ -466,15 +441,6 @@ class MainActivity : ComponentActivity() {
         clipboardHistoryRefresh()
     }
 
-    private fun showGateDenied(payload: org.json.JSONObject) {
-        AlertDialog.Builder(this)
-            .setTitle("Not enough Berries")
-            .setMessage("Not enough Berries — set sail to earn more")
-            .setNegativeButton("Later", null)
-            .setPositiveButton("Set Sail") { _, _ -> showScreen(Screen.VOYAGE) }
-            .show()
-    }
-
     private fun bindSchedWall(view: View) {
         val date = view.findViewById<EditText>(R.id.schedwall_date)
         val start = view.findViewById<EditText>(R.id.schedwall_start)
@@ -502,75 +468,6 @@ class MainActivity : ComponentActivity() {
             SchedWallRepository.addOverlay(eventDate, eventStart, eventEnd, eventTitle, { runOnUiThread { title.setText(""); status.text = "Overlay event saved"; refresh() } }, { runOnUiThread { SchedWallOfflineQueue.enqueue(this, eventDate, eventStart, eventEnd, eventTitle); title.setText(""); status.text = "Saved offline — it will sync on reconnect." } })
         }
         refresh()
-    }
-
-    private fun bindVoyage(view: View) {
-        val timer = view.findViewById<TextView>(R.id.voyage_timer); val status = view.findViewById<TextView>(R.id.voyage_status); val setSail = view.findViewById<Button>(R.id.set_sail); val abandon = view.findViewById<Button>(R.id.abandon_ship); val tiers = view.findViewById<android.widget.RadioGroup>(R.id.voyage_tiers)
-        view.findViewById<Button>(R.id.bounty_tab).setOnClickListener { showScreen(Screen.WANTED) }
-        view.findViewById<Button>(R.id.voyage_back).setOnClickListener { showScreen(Screen.HOME) }
-        var customDuration: Int? = null
-        tiers.check(R.id.voyage_coastal)
-        tiers.setOnCheckedChangeListener { _, selected ->
-            if (selected != -1) { customDuration = null; view.findViewById<LinearLayout>(R.id.custom_voyage).setBackgroundResource(R.drawable.bg_session_card); view.findViewById<TextView>(R.id.custom_preview).text = "" }
-            listOf(R.id.voyage_coastal, R.id.voyage_open, R.id.voyage_uncharted).forEach { id -> view.findViewById<android.widget.RadioButton>(id).setBackgroundResource(if (id == selected) R.drawable.bg_session_selected else R.drawable.bg_session_card) }
-        }
-        VoyageRepository.balance({ value -> runOnUiThread { view.findViewById<TextView>(R.id.voyage_bounty).text = "● ${BerryFormatter.format(value)}" } }, { })
-        var voyageId: String? = null; var total = 0; var started = 0L; var startRequestInFlight = false
-        val customHours = view.findViewById<EditText>(R.id.custom_hours); val customPreview = view.findViewById<TextView>(R.id.custom_preview)
-        view.findViewById<Button>(R.id.custom_set).setOnClickListener {
-            val hours = customHours.text.toString().toDoubleOrNull()
-            if (hours == null || hours <= 1.5) { customPreview.text = "Custom voyages must be longer than 1.5 hours"; return@setOnClickListener }
-            customDuration = (hours * 3600).toInt()
-            val reward = kotlin.math.round(3000 + 40 * ((customDuration!! - 5400) / 60.0)).toInt()
-            tiers.clearCheck(); view.findViewById<LinearLayout>(R.id.custom_voyage).setBackgroundResource(R.drawable.bg_session_selected)
-            customPreview.text = "${hours}h · +${BerryFormatter.format(reward)}"
-        }
-        val ticker = object : Runnable { override fun run() { val id = voyageId ?: return; val elapsed = ((System.currentTimeMillis() - started) / 1000).toInt(); val left = (total - elapsed).coerceAtLeast(0); timer.text = "%02d:%02d remaining".format(left / 60, left % 60); if (left == 0) { status.text = "Completing session…"; VoyageRepository.complete(id, { result -> runOnUiThread { status.text = "Completed · ${BerryFormatter.format(result.optInt("berriesAwarded"))}"; voyageId = null; setSail.isEnabled = true; setSail.text = "START FOCUS SESSION"; abandon.visibility = View.GONE } }, { error -> runOnUiThread { status.text = error } }) } else view.postDelayed(this, 1000) } }
-        VoyageRepository.history({ voyages -> runOnUiThread {
-            voyages.firstOrNull { it.status == "in_progress" }?.let { active ->
-                voyageId = active.id; total = active.duration; started = runCatching { Instant.parse(active.start).toEpochMilli() }.getOrDefault(System.currentTimeMillis())
-                setSail.isEnabled = false; setSail.text = "FOCUS SESSION ACTIVE"; abandon.visibility = View.VISIBLE; status.text = "Focus session active"; openFocusSession(active.id, active.duration, started)
-            }
-        } }, { })
-        setSail.setOnClickListener {
-            if (startRequestInFlight || voyageId != null) return@setOnClickListener
-            if (!isConnected) { status.text = "Connect to axon-core before setting sail."; return@setOnClickListener }
-            val tier = if (customDuration != null) "custom" else when (tiers.checkedRadioButtonId) { R.id.voyage_open -> "open_waters"; R.id.voyage_uncharted -> "uncharted"; else -> "coastal" }
-            startRequestInFlight = true; setSail.isEnabled = false; setSail.text = "STARTING…"; status.text = "Charting your course…"
-            VoyageRepository.start(tier, customDuration, { result -> runOnUiThread {
-                val id = result.optString("id")
-                val duration = result.optInt("durationSeconds", 0)
-                if (id.isBlank() || duration <= 0) { startRequestInFlight = false; setSail.isEnabled = true; setSail.text = "START FOCUS SESSION"; status.text = "Could not start session. Please try again."; return@runOnUiThread }
-                startRequestInFlight = false; voyageId = id; total = duration; started = runCatching { Instant.parse(result.optString("plannedEndTime")).toEpochMilli() - duration * 1000L }.getOrDefault(System.currentTimeMillis()); abandon.visibility = View.VISIBLE; setSail.text = "FOCUS SESSION ACTIVE"; status.text = "Focus session started"; openFocusSession(id, duration, started)
-            } }, { error -> runOnUiThread { startRequestInFlight = false; setSail.isEnabled = true; setSail.text = "START FOCUS SESSION"; status.text = error } })
-        }
-        abandon.setOnClickListener { AlertDialog.Builder(this).setTitle("End this focus session?").setMessage("You'll lose Berries.").setNegativeButton("Keep focusing", null).setPositiveButton("End") { _, _ -> voyageId?.let { id -> abandon.isEnabled = false; VoyageRepository.abandon(id, { result -> runOnUiThread { voyageId = null; setSail.isEnabled = true; setSail.text = "START FOCUS SESSION"; abandon.visibility = View.GONE; abandon.isEnabled = true; status.text = "Session ended — ${BerryFormatter.format(result.optInt("berriesDeducted"))} lost" } }, { error -> runOnUiThread { abandon.isEnabled = true; status.text = error } }) } }.show() }
-    }
-
-    private fun openFocusSession(id: String, duration: Int, started: Long) {
-        startActivity(Intent(this, FocusSessionActivity::class.java).putExtra("voyage_id", id).putExtra("duration", duration).putExtra("started", started))
-    }
-
-    private fun bindWanted(view: View) {
-        val prefs = getSharedPreferences("voyage_profile", MODE_PRIVATE); val name = view.findViewById<EditText>(R.id.captain_name); name.setText(prefs.getString("captain_name", "")); view.findViewById<Button>(R.id.save_captain).setOnClickListener { prefs.edit().putString("captain_name", name.text.toString().trim()).apply(); Toast.makeText(this, "Captain saved", Toast.LENGTH_SHORT).show() }
-        view.findViewById<Button>(R.id.voyage_tab).setOnClickListener { showScreen(Screen.VOYAGE) }
-        view.findViewById<Button>(R.id.wanted_back).setOnClickListener { showScreen(Screen.HOME) }
-        VoyageRepository.balance({ amount -> runOnUiThread { view.findViewById<TextView>(R.id.wanted_bounty).text = BerryFormatter.format(amount) } }, {})
-        VoyageRepository.history({ voyages -> runOnUiThread {
-            val list = view.findViewById<LinearLayout>(R.id.wanted_history); list.removeAllViews()
-            val completed = voyages.filter { it.status == "completed" }
-            if (completed.isEmpty()) list.addView(TextView(this).apply { text = "No completed focus sessions yet."; textSize = 12f; setTextColor(getColor(R.color.text_muted)); background = getDrawable(R.drawable.bg_focus_card); setPadding(14.dp, 14.dp, 14.dp, 14.dp) })
-            completed.forEach { voyage ->
-                list.addView(LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
-                    background = getDrawable(R.drawable.bg_focus_card); setPadding(14.dp, 11.dp, 14.dp, 11.dp)
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 8.dp) }
-                    addView(View(this@MainActivity).apply { setBackgroundColor(getColor(R.color.accent_amber)); layoutParams = LinearLayout.LayoutParams(8.dp, 8.dp).apply { marginEnd = 10.dp } })
-                    addView(TextView(this@MainActivity).apply { text = "${voyage.tier.replace("_", " ").replaceFirstChar { it.uppercase() } }\n${relativeTime(voyage.start)}"; textSize = 11f; setTextColor(getColor(R.color.text_primary)); layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
-                    addView(TextView(this@MainActivity).apply { text = "+${BerryFormatter.format(voyage.berries ?: 0).removeSuffix(" Berries")}"; textSize = 12f; setTextColor(getColor(R.color.ok)) })
-                })
-            }
-        } }, {})
     }
 
     private fun bindSettings(view: View) {
@@ -1336,7 +1233,7 @@ class MainActivity : ComponentActivity() {
             onError = { error -> runOnUiThread {
                 if (currentScreen != Screen.NEWS) return@runOnUiThread
                 refresh.isRefreshing = false
-                if (error == "gate.denied") showGateDenied(org.json.JSONObject()) else status.text = error
+                status.text = error
             } },
         )
     }
@@ -1467,7 +1364,7 @@ class MainActivity : ComponentActivity() {
             } },
             onError = { error -> runOnUiThread {
                 if (currentScreen == Screen.FILES) {
-                    if (error == "gate.denied") showGateDenied(org.json.JSONObject()) else status.text = error
+                    status.text = error
                 }
             } },
         )
@@ -1519,7 +1416,62 @@ class MainActivity : ComponentActivity() {
     private fun bindMacros(view: View) {
         macroGrid = view.findViewById(R.id.macro_grid)
         macroLog = view.findViewById(R.id.macro_log)
+        val presetSpinner = view.findViewById<android.widget.Spinner>(R.id.macro_preset_spinner)
+
+        MacroRepository.fetchPresets(
+            onSuccess = { presets -> runOnUiThread {
+                if (currentScreen != Screen.MACROS) return@runOnUiThread
+                val adapter = ArrayAdapter(
+                    this,
+                    android.R.layout.simple_spinner_dropdown_item,
+                    presets.names,
+                )
+                presetSpinner.adapter = adapter
+                val activeIndex = presets.names.indexOf(presets.active).coerceAtLeast(0)
+                presetSpinner.setSelection(activeIndex)
+                activeMacroPreset = presets.names.getOrNull(activeIndex) ?: presets.active
+                loadMacros(activeMacroPreset)
+            } },
+            onError = { error -> runOnUiThread {
+                if (currentScreen != Screen.MACROS) return@runOnUiThread
+                macroGrid?.removeAllViews()
+                macroGrid?.addView(TextView(this).apply {
+                    text = error
+                    setTextColor(getColor(R.color.failure_muted_red))
+                })
+            } },
+        )
+
+        presetSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val name = parent?.getItemAtPosition(position)?.toString() ?: return
+                if (name == activeMacroPreset) return
+                activeMacroPreset = name
+                MacroRepository.activatePreset(
+                    name,
+                    onSuccess = { active -> runOnUiThread {
+                        if (currentScreen != Screen.MACROS) return@runOnUiThread
+                        activeMacroPreset = active
+                        loadMacros(active)
+                    } },
+                    onError = { error -> runOnUiThread {
+                        if (currentScreen != Screen.MACROS) return@runOnUiThread
+                        macroGrid?.removeAllViews()
+                        macroGrid?.addView(TextView(this@MainActivity).apply {
+                            text = error
+                            setTextColor(getColor(R.color.failure_muted_red))
+                        })
+                    } },
+                )
+            }
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+    }
+
+    private fun loadMacros(preset: String?) {
         MacroRepository.fetchConfig(
+            preset = preset,
             onSuccess = { config -> runOnUiThread {
                 if (currentScreen != Screen.MACROS) return@runOnUiThread
                 macros.clear()
@@ -1652,8 +1604,6 @@ class MainActivity : ComponentActivity() {
             Screen.TODO -> R.string.nav_todo
             Screen.SPACE -> R.string.nav_home
             Screen.SCHEDWALL -> R.string.nav_schedwall
-            Screen.VOYAGE -> R.string.nav_home
-            Screen.WANTED -> R.string.nav_home
             Screen.GOALS -> R.string.nav_home
             Screen.CGPA -> R.string.nav_home
             Screen.CLIPBOARD_HISTORY -> R.string.nav_home
