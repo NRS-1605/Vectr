@@ -5,10 +5,12 @@ import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.SharedPreferences
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.text.SpannableString
@@ -17,6 +19,8 @@ import android.text.style.RelativeSizeSpan
 import android.text.style.SuperscriptSpan
 import android.animation.ObjectAnimator
 import android.animation.AnimatorSet
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.os.Bundle
 import android.util.Log
@@ -25,6 +29,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.GridLayout
 import android.widget.Button
 import android.widget.ArrayAdapter
@@ -35,8 +40,6 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import androidx.compose.ui.platform.ComposeView
 import androidx.activity.ComponentActivity
 import java.text.DateFormat
 import java.time.Instant
@@ -47,15 +50,20 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 class MainActivity : ComponentActivity() {
-    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TELEMETRY, NEWS, TODO, SPACE, SCHEDWALL, GOALS, CGPA, CLIPBOARD_HISTORY, SETTINGS }
+    private enum class Screen { HOME, CAPTURE, MACROS, TOUCHPAD, FILES, INVENTORY, TODO, SPACE, SCHEDWALL, GOALS, CGPA, CLIPBOARD_HISTORY, SETTINGS }
 
     private lateinit var content: View
     private lateinit var navButtons: Map<Screen, ImageButton>
     private var currentScreen = Screen.HOME
+    private var todoSelectedList: Int? = null
+    private var schedWallState = SchedWallState("", emptyList(), emptyList(), emptySet())
+    private var schedWallShownDate = java.time.LocalDate.now()
+    private var spaceAllNotes = emptyList<SpaceNote>()
     private var isConnected = false
     private var connectionLabel: TextView? = null
     private var connectionDot: ImageView? = null
-    private var connectionSource = "Discovering axon-core"
+    private var connectionBadge: LinearLayout? = null
+    private var connectionSource = "Discovering Onyx core"
     private var macroGrid: LinearLayout? = null
     private var macroLog: LinearLayout? = null
     private var activeMacroPreset: String? = null
@@ -67,8 +75,6 @@ class MainActivity : ComponentActivity() {
     private var removePhotoButton: TextView? = null
     private var pendingSharedClipboardText: String? = null
     private var clipboardHistoryList: LinearLayout? = null
-    private var telemetry: org.json.JSONObject? = null
-    private val telemetryHistory = mutableListOf<TelemetrySample>()
     private var isAppForeground = false
     private var activeScreenSubscription: String? = null
     private var activeTouchpadSurface: TouchpadSurfaceView? = null
@@ -78,16 +84,15 @@ class MainActivity : ComponentActivity() {
         HomeModule("Macros", "Trigger keypresses and shell commands", Screen.MACROS, 1, R.drawable.ic_macros),
         HomeModule("Touchpad", "Remote mouse, click, and scroll", Screen.TOUCHPAD, 1, R.drawable.ic_touchpad),
         HomeModule("Files", "Send and receive files instantly", Screen.FILES, 2, R.drawable.ic_files),
-        HomeModule("Todo", "Shared checklist", Screen.TODO, 1, R.drawable.ic_todo),
+        HomeModule("Todo", "Shared checklist", Screen.TODO, 1, R.drawable.ic_todo, featured = true),
         HomeModule("Clipboard", "Send copied text", null, 1, R.drawable.ic_clipboard, action = ::sendClipboardFromDevice),
-        HomeModule("Telemetry", "Live CPU, RAM, and temperature", Screen.TELEMETRY, 2, R.drawable.ic_telemetry),
-        HomeModule("News", "Headlines from your saved feeds", Screen.NEWS, 1, R.drawable.ic_news),
-        HomeModule("Space", "Browse saved captures", Screen.SPACE, 1, R.drawable.ic_space),
-        HomeModule("SchedWall", "One-off schedule overlays", Screen.SCHEDWALL, 2, R.drawable.ic_schedwall_clean),
+        HomeModule("Space", "Browse saved captures", Screen.SPACE, 2, R.drawable.ic_space),
         HomeModule("Inventory", "Food and medicine expiry tracker", Screen.INVENTORY, 1, R.drawable.ic_inventory),
+        HomeModule("Pomodoro", "Deep-work sessions with focus tracking", null, 1, R.drawable.ic_focus, action = ::showPomodoroDialog, featured = true),
         HomeModule("Goals", "Plan and connect your long-term goals", Screen.GOALS, 2, R.drawable.ic_focus),
         HomeModule("CGPA", "Semester grade tracker", Screen.CGPA, 1, R.drawable.ic_focus),
         HomeModule("Clipboard History", "Copied text from all devices", Screen.CLIPBOARD_HISTORY, 1, R.drawable.ic_clipboard),
+        HomeModule("SchedWall", "One-off schedule overlays", Screen.SCHEDWALL, 2, R.drawable.ic_schedwall_clean, featured = true),
     )
 
     private data class PendingMacro(val buttonId: Int, val label: String, val button: Button, val timeout: Runnable)
@@ -97,6 +102,7 @@ class MainActivity : ComponentActivity() {
         val screen: Screen?,
         val span: Int,
         val icon: Int,
+        val featured: Boolean = false,
         val action: (() -> Unit)? = null,
     )
 
@@ -111,10 +117,19 @@ class MainActivity : ComponentActivity() {
         private const val PREF_HOST = "core_host"
         private const val PREF_PORT = "core_port"
         private const val PREF_MANUAL_OVERRIDE = "manual_override"
+        private const val PREF_DARK_MODE = "dark_mode"
         private const val DEFAULT_PORT = 4101
         private const val PREF_PRODUCT_ONBOARDING_SEEN = "product_onboarding_seen"
         private const val FRESH_INSTALL_PREFS = "vectr_fresh_install"
         private const val FRESH_INSTALL_VERSION = 1
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        val prefs = newBase.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val dark = prefs.getBoolean(PREF_DARK_MODE, false)
+        val config = Configuration(newBase.resources.configuration)
+        config.uiMode = if (dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+        super.attachBaseContext(newBase.createConfigurationContext(config))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -146,8 +161,8 @@ class MainActivity : ComponentActivity() {
                     "macro.result" -> handleMacroResult(payload)
                     "clipboard.update" -> if (payload.optString("source") == "laptop") receiveLaptopClipboard(payload.optString("text"))
                     "clipboard.history" -> if (currentScreen == Screen.CLIPBOARD_HISTORY) clipboardHistoryRefresh()
-                    "telemetry.update" -> recordTelemetry(payload)
-                    "todos.update" -> if (currentScreen == Screen.TODO) payload.optJSONArray("items")?.let { renderTodos(TodoRepository.parse(it)) }
+                    "todos.update" -> if (currentScreen == Screen.TODO) renderTodos(TodoRepository.parse(payload))
+                    "schedwall.state" -> { schedWallState = SchedWallRepository.parseState(payload); if (currentScreen == Screen.SCHEDWALL) renderSchedWallScheduleFromWs() }
                 }
             }
         }
@@ -198,16 +213,20 @@ class MainActivity : ComponentActivity() {
         if (currentScreen != Screen.HOME) showScreen(Screen.HOME) else super.onBackPressed()
     }
 
-    private fun showScreen(screen: Screen) {
+    private var isScreenAnimating = false
+    private fun showScreen(screen: Screen, animate: Boolean = true) {
+        if (isScreenAnimating) return
+        val previous = currentScreen
         clearScreenSubscription()
         currentScreen = screen
-        requestedOrientation = if (screen == Screen.MACROS || screen == Screen.TOUCHPAD || screen == Screen.TELEMETRY) {
+        requestedOrientation = if (screen == Screen.MACROS || screen == Screen.TOUCHPAD) {
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         } else {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
         navButtons.forEach { (item, button) -> button.isSelected = item == screen }
-        (content as android.view.ViewGroup).removeAllViews()
+        val container = content as android.view.ViewGroup
+        val oldView = if (container.childCount > 0) container.getChildAt(0) else null
         connectionLabel = null
         connectionDot = null
         activeTouchpadSurface = null
@@ -219,8 +238,6 @@ class MainActivity : ComponentActivity() {
             Screen.TOUCHPAD -> R.layout.screen_touchpad
             Screen.FILES -> R.layout.screen_files
             Screen.INVENTORY -> R.layout.screen_inventory
-            Screen.TELEMETRY -> R.layout.screen_telemetry
-            Screen.NEWS -> R.layout.screen_news
             Screen.TODO -> R.layout.screen_todo
             Screen.SPACE -> R.layout.screen_space
             Screen.SCHEDWALL -> R.layout.screen_schedwall
@@ -229,8 +246,45 @@ class MainActivity : ComponentActivity() {
             Screen.CLIPBOARD_HISTORY -> R.layout.screen_clipboard
             Screen.SETTINGS -> R.layout.screen_settings
         }
-        val screenView = LayoutInflater.from(this).inflate(layout, content as android.view.ViewGroup, false)
-        (content as android.view.ViewGroup).addView(screenView)
+        val screenView = LayoutInflater.from(this).inflate(layout, container, false)
+        fun bindAndFinish() {
+            container.addView(screenView)
+            when (screen) {
+                Screen.HOME -> bindHome(screenView)
+                Screen.CAPTURE -> bindCapture(screenView)
+                Screen.MACROS -> bindMacros(screenView)
+                Screen.TOUCHPAD -> bindTouchpad(screenView)
+                Screen.FILES -> bindFiles(screenView)
+                Screen.INVENTORY -> bindInventory(screenView)
+                Screen.TODO -> bindTodo(screenView)
+                Screen.SPACE -> bindSpace(screenView)
+                Screen.SCHEDWALL -> bindSchedWall(screenView)
+                Screen.GOALS -> bindGoals(screenView)
+                Screen.CGPA -> bindCgpa(screenView)
+                Screen.CLIPBOARD_HISTORY -> bindClipboardHistory(screenView)
+                Screen.SETTINGS -> bindSettings(screenView)
+            }
+            updateScreenSubscription()
+        }
+        // smooth slide+fade: forward (Home->other) slides in from right, back (other->Home) from left
+        val shouldAnimate = animate && oldView != null && previous != screen
+        if (!shouldAnimate) {
+            container.removeAllViews()
+            bindAndFinish()
+            // subtle fade for first load / same-screen
+            screenView.alpha = 0f
+            screenView.animate().alpha(1f).setDuration(180).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+            return
+        }
+        isScreenAnimating = true
+        val isBack = screen == Screen.HOME && previous != Screen.HOME
+        val dir = if (isBack) -1 else 1
+        // prepare new view off-screen
+        screenView.alpha = 0f
+        screenView.translationX = 56f * dir
+        screenView.scaleX = 0.98f
+        screenView.scaleY = 0.98f
+        container.addView(screenView)
         when (screen) {
             Screen.HOME -> bindHome(screenView)
             Screen.CAPTURE -> bindCapture(screenView)
@@ -238,8 +292,6 @@ class MainActivity : ComponentActivity() {
             Screen.TOUCHPAD -> bindTouchpad(screenView)
             Screen.FILES -> bindFiles(screenView)
             Screen.INVENTORY -> bindInventory(screenView)
-            Screen.TELEMETRY -> bindTelemetry(screenView)
-            Screen.NEWS -> bindNews(screenView)
             Screen.TODO -> bindTodo(screenView)
             Screen.SPACE -> bindSpace(screenView)
             Screen.SCHEDWALL -> bindSchedWall(screenView)
@@ -249,10 +301,27 @@ class MainActivity : ComponentActivity() {
             Screen.SETTINGS -> bindSettings(screenView)
         }
         updateScreenSubscription()
+        oldView.animate()
+            .alpha(0f)
+            .translationX((-42f * dir))
+            .scaleX(0.98f).scaleY(0.98f)
+            .setDuration(190)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
+            .withEndAction {
+                container.removeView(oldView)
+                isScreenAnimating = false
+            }.start()
+        screenView.animate()
+            .alpha(1f)
+            .translationX(0f)
+            .scaleX(1f).scaleY(1f)
+            .setDuration(300)
+            .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
+            .start()
+        return
     }
 
     private fun subscriptionFor(screen: Screen): String? = when (screen) {
-        Screen.TELEMETRY -> "telemetry"
         Screen.MACROS -> "macro"
         Screen.TOUCHPAD -> "touchpad"
         else -> null
@@ -273,34 +342,30 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindHome(view: View) {
-        view.findViewById<TextView>(R.id.home_wordmark).text = SpannableString("VeCTR").apply {
-            setSpan(RelativeSizeSpan(.64f), 1, 2, 0)
-            setSpan(SuperscriptSpan(), 1, 2, 0)
-            setSpan(ForegroundColorSpan(getColor(R.color.accent_amber)), 2, 3, 0)
-        }
-        ObjectAnimator.ofFloat(view.findViewById(R.id.home_blink_dot), View.ALPHA, 1f, .15f, 1f).apply { duration = 900; repeatCount = ObjectAnimator.INFINITE; start() }
+        view.findViewById<TextView>(R.id.home_wordmark).text = getString(R.string.app_name)
         connectionLabel = view.findViewById(R.id.connection_status_label)
         connectionDot = view.findViewById(R.id.connection_status_dot)
+        connectionBadge = view.findViewById(R.id.connection_badge)
         view.findViewById<Button>(R.id.home_reconnect).setOnClickListener { VectrForegroundService.reconnect(this) }
-        view.findViewById<Button>(R.id.home_edit).setOnClickListener { showScreen(Screen.SETTINGS) }
+        view.findViewById<ImageButton>(R.id.home_edit).setOnClickListener { showScreen(Screen.SETTINGS) }
         val grid = view.findViewById<GridLayout>(R.id.home_module_grid)
         homeModules.forEachIndexed { index, module ->
             val isFirstSmallCard = module.span == 1 && homeModules.getOrNull(index - 1)?.span == 2
             grid.addView(homeModuleView(module), GridLayout.LayoutParams().apply {
                 width = 0
-                height = 118.dp
+                height = 140.dp
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED, module.span, 1f)
                 setMargins(0, 0, if (isFirstSmallCard) 16.dp else 0, 8.dp)
             })
         }
         val uptime = view.findViewById<TextView>(R.id.home_uptime); val seen = view.findViewById<TextView>(R.id.home_last_seen); val endpoint = view.findViewById<TextView>(R.id.home_endpoint)
-        val update = object : Runnable { override fun run() { val elapsed = (System.currentTimeMillis() - lastConnectedAt).coerceAtLeast(0); uptime.text = "UPTIME ${formatElapsed(elapsed)}"; seen.text = if (lastConnectedAt == 0L) "Last seen never" else "Last seen ${formatElapsed(elapsed)} ago"; endpoint.text = connectionSource; view.postDelayed(this, 1000) } }; update.run()
+        val update = object : Runnable { override fun run() { val elapsed = (System.currentTimeMillis() - lastConnectedAt).coerceAtLeast(0); uptime.text = formatElapsed(elapsed); seen.text = if (lastConnectedAt == 0L) "Never" else "${formatElapsed(elapsed)} ago"; endpoint.text = connectionSource; view.postDelayed(this, 1000) } }; update.run()
         updateConnectionIndicator()
         updatePendingSyncIndicator(OfflineCaptureQueue.count(this))
         if (!getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_PRODUCT_ONBOARDING_SEEN, false)) {
             view.post {
                 AlertDialog.Builder(this)
-                    .setTitle("Welcome to VeCTR")
+                    .setTitle("Welcome to Onyx")
                     .setMessage("Connect to your computer, then choose a module below.")
                     .setPositiveButton("Get started") { _, _ -> getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_PRODUCT_ONBOARDING_SEEN, true).apply() }
                     .show()
@@ -308,18 +373,219 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun homeModuleView(module: HomeModule) = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_home_tile); setPadding(14.dp, 10.dp, 14.dp, 10.dp); isClickable = true; isFocusable = true; setOnClickListener { module.action?.invoke() ?: module.screen?.let(::showScreen) }
-        addView(android.widget.FrameLayout(this@MainActivity).apply {
-            background = getDrawable(R.drawable.bg_icon_button)
-            layoutParams = LinearLayout.LayoutParams(34.dp, 34.dp)
-            addView(ImageView(this@MainActivity).apply { setImageResource(module.icon); setColorFilter(getColor(R.color.accent_amber)); layoutParams = android.widget.FrameLayout.LayoutParams(19.dp, 19.dp, android.view.Gravity.CENTER) })
+    private fun homeModuleView(module: HomeModule) = android.widget.FrameLayout(this).apply {
+        background = getDrawable(if (module.featured) R.drawable.bg_tool_card_featured else R.drawable.bg_home_tile)
+        setPadding(18.dp, 16.dp, 18.dp, 16.dp)
+        minimumHeight = 140.dp
+        isClickable = true
+        isFocusable = true
+        // press feedback + then navigate with screen transition handled in showScreen
+        setOnClickListener { v ->
+            v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(90).withEndAction {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(140).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+                // slight delay so scale-up is visible before transition
+                v.postDelayed({ module.action?.invoke() ?: module.screen?.let(::showScreen) }, 90)
+            }.start()
+        }
+        addView(LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+            addView(android.widget.FrameLayout(this@MainActivity).apply {
+                background = getDrawable(if (module.featured) R.drawable.bg_icon_box_featured else R.drawable.bg_icon_box)
+                layoutParams = android.widget.FrameLayout.LayoutParams(36.dp, 36.dp)
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(module.icon)
+                    setColorFilter(getColor(if (module.featured) R.color.white else R.color.onyx_coral))
+                    layoutParams = android.widget.FrameLayout.LayoutParams(20.dp, 20.dp, android.view.Gravity.CENTER)
+                })
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = module.title
+                textSize = 15f
+                setTextColor(getColor(if (module.featured) R.color.white else R.color.on_card))
+                setPadding(0, 12.dp, 0, 0)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = module.description
+                textSize = 11f
+                setTextColor(getColor(if (module.featured) R.color.white_soft else R.color.on_card_muted))
+                maxLines = 2
+                setPadding(0, 5.dp, 0, 0)
+            })
         })
-        addView(TextView(this@MainActivity).apply { text = module.title; textSize = 14f; setTextColor(getColor(R.color.text_primary)); setPadding(0, 4.dp, 0, 0) })
-        addView(TextView(this@MainActivity).apply { text = module.description; textSize = 10f; setTextColor(getColor(R.color.text_muted)); maxLines = 1; setPadding(0, 2.dp, 0, 0) })
     }
     private fun formatElapsed(millis: Long): String { val seconds = millis / 1000; return "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60) }
     private val Int.dp get() = (this * resources.displayMetrics.density).toInt()
+
+    private fun showPomodoroDialog() {
+        var seconds = 25 * 60
+        var running = false
+        val time = TextView(this).apply {
+            text = formatPomodoro(seconds)
+            textSize = 52f
+            typeface = android.graphics.Typeface.SERIF
+            gravity = android.view.Gravity.CENTER
+            setTextColor(getColor(R.color.onyx_ink))
+        }
+        val session = TextView(this).apply {
+            text = getString(R.string.pomodoro_session)
+            gravity = android.view.Gravity.CENTER
+            setTextColor(getColor(R.color.text_muted))
+            textSize = 13f
+        }
+        lateinit var hourPicker: android.widget.NumberPicker
+        lateinit var minutePicker: android.widget.NumberPicker
+        val hourLabel = TextView(this).apply {
+            text = "Hours"
+            gravity = android.view.Gravity.CENTER
+            setTextColor(getColor(R.color.text_muted))
+            textSize = 12f
+            letterSpacing = 0.08f
+        }
+        val minuteLabel = TextView(this).apply {
+            text = "Minutes"
+            gravity = android.view.Gravity.CENTER
+            setTextColor(getColor(R.color.text_muted))
+            textSize = 12f
+            letterSpacing = 0.08f
+        }
+        hourPicker = android.widget.NumberPicker(this).apply {
+            minValue = 0
+            maxValue = 12
+            value = 0
+            wrapSelectorWheel = true
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL }
+        }
+        minutePicker = android.widget.NumberPicker(this).apply {
+            minValue = 0
+            maxValue = 59
+            value = 25
+            wrapSelectorWheel = true
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL }
+        }
+        fun updateSecondsFromPickers() {
+            if (running) return
+            val totalMinutes = hourPicker.value * 60 + minutePicker.value
+            seconds = if (totalMinutes == 0) 60 else totalMinutes * 60
+            if (totalMinutes == 0) {
+                // enforce at least 1 minute
+                minutePicker.value = 1
+                seconds = 60
+            }
+            time.text = formatPomodoro(seconds)
+        }
+        hourPicker.setOnValueChangedListener { _, _, _ -> updateSecondsFromPickers() }
+        minutePicker.setOnValueChangedListener { _, oldVal, newVal ->
+            if (!running) {
+                // when minutes wrap 59->0, bump hour; 0->59, drop hour
+                if (oldVal == 59 && newVal == 0 && hourPicker.value < hourPicker.maxValue) {
+                    hourPicker.value = hourPicker.value + 1
+                } else if (oldVal == 0 && newVal == 59 && hourPicker.value > hourPicker.minValue) {
+                    hourPicker.value = hourPicker.value - 1
+                }
+                updateSecondsFromPickers()
+            }
+        }
+        val pickerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            setPadding(0, 12.dp, 0, 4.dp)
+            weightSum = 2f
+            val hourCol = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                addView(hourLabel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL; bottomMargin = 4.dp })
+                addView(hourPicker)
+            }
+            val minuteCol = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                addView(minuteLabel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL; bottomMargin = 4.dp })
+                addView(minutePicker)
+            }
+            addView(hourCol)
+            addView(minuteCol)
+        }
+        val start = Button(this).apply {
+            text = getString(R.string.pomodoro_start)
+            background = getDrawable(R.drawable.bg_action)
+            setTextColor(getColor(R.color.on_coral))
+            setOnClickListener {
+                if (!running && seconds == 0) {
+                    val totalMinutes = hourPicker.value * 60 + minutePicker.value
+                    seconds = if (totalMinutes == 0) 60 else totalMinutes * 60
+                    time.text = formatPomodoro(seconds)
+                }
+                running = !running
+                text = getString(if (running) R.string.pomodoro_pause else R.string.pomodoro_resume)
+                hourPicker.isEnabled = !running
+                minutePicker.isEnabled = !running
+                pickerRow.alpha = if (running) 0.4f else 1f
+            }
+        }
+        val reset = Button(this).apply {
+            text = getString(R.string.pomodoro_reset)
+            background = getDrawable(R.drawable.bg_home_tile)
+            setTextColor(getColor(R.color.on_card))
+            setOnClickListener {
+                running = false
+                val totalMinutes = hourPicker.value * 60 + minutePicker.value
+                seconds = if (totalMinutes == 0) 60 else totalMinutes * 60
+                time.text = formatPomodoro(seconds)
+                start.text = getString(R.string.pomodoro_start)
+                hourPicker.isEnabled = true
+                minutePicker.isEnabled = true
+                pickerRow.alpha = 1f
+            }
+        }
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(start, LinearLayout.LayoutParams(0, 46.dp, 1f))
+            addView(reset, LinearLayout.LayoutParams(0, 46.dp, 1f).apply { marginStart = 12.dp })
+        }
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(28.dp, 12.dp, 28.dp, 8.dp)
+            addView(time)
+            addView(session)
+            addView(pickerRow, LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8.dp })
+            addView(controls, LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16.dp })
+        }
+        val handler = Handler(Looper.getMainLooper())
+        val tick = object : Runnable {
+            override fun run() {
+                if (running) {
+                    if (seconds > 0) seconds--
+                    if (seconds == 0) {
+                        running = false
+                        start.text = getString(R.string.pomodoro_start)
+                        hourPicker.isEnabled = true
+                        minutePicker.isEnabled = true
+                        pickerRow.alpha = 1f
+                        Toast.makeText(this@MainActivity, R.string.pomodoro_done, Toast.LENGTH_SHORT).show()
+                    }
+                }
+                time.text = formatPomodoro(seconds)
+                handler.postDelayed(this, 1000)
+            }
+        }
+        handler.post(tick)
+        AlertDialog.Builder(this)
+            .setTitle("Focus")
+            .setView(body)
+            .setNegativeButton("Close") { dialog, _ -> handler.removeCallbacks(tick); dialog.dismiss() }
+            .show()
+    }
+
+    private fun formatPomodoro(seconds: Int): String {
+        val h = seconds / 3600
+        val m = (seconds % 3600) / 60
+        val s = seconds % 60
+        return if (h > 0) "%02d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    }
 
     private fun handleShareIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return
@@ -441,22 +707,193 @@ class MainActivity : ComponentActivity() {
         clipboardHistoryRefresh()
     }
 
+    private fun renderSchedWallScheduleFromWs() {
+        try {
+            if (currentScreen != Screen.SCHEDWALL) return
+            val contentView = if (::content.isInitialized) content else return
+            val dayLabel = contentView.findViewById<TextView>(R.id.schedwall_day) ?: return
+            val dateLabel = contentView.findViewById<TextView>(R.id.schedwall_date) ?: return
+            val list = contentView.findViewById<LinearLayout>(R.id.schedwall_schedule_list) ?: return
+            dayLabel.text = schedWallShownDate.dayOfWeek.name.substring(0, 3)
+            dateLabel.text = "${schedWallShownDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())}, ${schedWallShownDate.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())} ${schedWallShownDate.dayOfMonth}, ${schedWallShownDate.year}"
+            list.removeAllViews()
+            val dayIndex = ((schedWallShownDate.dayOfWeek.value + 6) % 7) + 1
+            val ymd = schedWallShownDate.toString()
+            // collect tasks for this day: template + overlay, keep layer info for styling
+            data class SlotItem(val start: Int, val end: Int, val title: String, val layer: String, val id: String)
+            val slotItems = mutableListOf<SlotItem>()
+            schedWallState.template.filter { it.day == dayIndex }.forEach { slotItems.add(SlotItem(it.start, it.end, it.title, "template", it.id)) }
+            schedWallState.overlay.filter { it.date == ymd }.forEach { slotItems.add(SlotItem(it.start, it.end, it.title, "overlay", it.id)) }
+            slotItems.sortBy { it.start }
+            // Same structure as wallpaper: HOUR_START=8, HOUR_END=24 (8am-12am), show 1h slots. Wallpaper uses 8-25, phone uses 8-24 per request.
+            val HOUR_START = 8
+            val HOUR_END = 24
+            fun fmtHour(h: Int): String {
+                val n = ((h % 24) + 24) % 24
+                val suffix = if (n < 12) "AM" else "PM"
+                val h12 = ((n + 11) % 12) + 1
+                return "$h12 $suffix"
+            }
+            // Build hour grid like wallpaper but single day swipeable - 1h slots
+            for (h in HOUR_START until HOUR_END) {
+                val hourRow = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    setPadding(0, 0, 0, 0)
+                }
+                // hour label (92dp equivalent) - 64dp on phone
+                val label = TextView(this).apply {
+                    text = fmtHour(h)
+                    textSize = 11f
+                    setTextColor(getColor(R.color.text_muted))
+                    gravity = android.view.Gravity.END
+                    setPadding(0, 6.dp, 12.dp, 0)
+                    layoutParams = LinearLayout.LayoutParams(64.dp, 56.dp)
+                }
+                hourRow.addView(label)
+                // slot container
+                val slotContainer = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(0, 56.dp, 1f)
+                    background = getDrawable(R.drawable.bg_macro_log)
+                    setPadding(8.dp, 6.dp, 8.dp, 6.dp)
+                }
+                // find tasks that intersect this hour slot: task.start <= h && h < task.end OR task.start == h
+                val tasksHere = slotItems.filter { it.start <= h && h < it.end }
+                if (tasksHere.isEmpty()) {
+                    // empty slot - faint line hint
+                    slotContainer.alpha = 0.45f
+                } else {
+                    // show first task (or multiple stacked)
+                    tasksHere.forEach { task ->
+                        val key = "${task.id}-$ymd"
+                        val isDone = schedWallState.checked.contains(key)
+                        val isOverlay = task.layer == "overlay"
+                        val taskRow = LinearLayout(this).apply {
+                            orientation = LinearLayout.HORIZONTAL
+                            gravity = android.view.Gravity.CENTER_VERTICAL
+                            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                            setPadding(8.dp, 6.dp, 8.dp, 6.dp)
+                            background = getDrawable(if (isOverlay) R.drawable.bg_home_tile else R.drawable.bg_macro_log).apply { /* tint handled by drawable */ }
+                            // overlay left border hint via padding + background, otherwise card
+                            if (isOverlay) {
+                                // add left border mimic: use outline via elevation
+                            }
+                        }
+                        // checkbox box like wallpaper
+                        val box = TextView(this).apply {
+                            text = if (isDone) "✓" else ""
+                            textSize = 10f
+                            gravity = android.view.Gravity.CENTER
+                            setTextColor(getColor(R.color.text_primary))
+                            background = getDrawable(R.drawable.bg_input).apply { /* box */ }
+                            layoutParams = LinearLayout.LayoutParams(14.dp, 14.dp).apply { marginEnd = 8.dp }
+                            setPadding(0,0,0,0)
+                        }
+                        if (isDone) box.alpha = 0.9f
+                        taskRow.addView(box)
+                        val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+                        titleCol.addView(TextView(this).apply {
+                            text = task.title
+                            textSize = 14f
+                            setTextColor(getColor(R.color.text_primary))
+                            maxLines = 1
+                            if (isDone) paintFlags = paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+                            alpha = if (isDone) 0.5f else 1f
+                        })
+                        titleCol.addView(TextView(this).apply {
+                            text = "${fmtHour(task.start)} — ${fmtHour(task.end)}"
+                            textSize = 10f
+                            setTextColor(getColor(R.color.text_faint))
+                            letterSpacing = 0.15f
+                        })
+                        taskRow.addView(titleCol)
+                        slotContainer.addView(taskRow)
+                        if (isOverlay) {
+                            // left accent line
+                            taskRow.background = getDrawable(R.drawable.bg_widget).also {
+                                // keep
+                            }
+                        }
+                    }
+                }
+                hourRow.addView(slotContainer)
+                list.addView(hourRow)
+                // row separator
+                list.addView(View(this).apply {
+                    setBackgroundColor(getColor(R.color.text_faint))
+                    alpha = 0.12f
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1).apply { leftMargin = 64.dp }
+                })
+            }
+            // now-line indicator if today
+            if (schedWallShownDate == java.time.LocalDate.now()) {
+                val now = java.time.LocalTime.now()
+                val nowH = now.hour + now.minute / 60f
+                if (nowH >= HOUR_START && nowH < HOUR_END) {
+                    val nowRow = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                    }
+                    list.addView(nowRow)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SchedWall", "render failed", e)
+        }
+    }
+
     private fun bindSchedWall(view: View) {
-        val date = view.findViewById<EditText>(R.id.schedwall_date)
+        val scheduleView = view.findViewById<LinearLayout>(R.id.schedwall_schedule_view)
+        val overlayView = view.findViewById<ScrollView>(R.id.schedwall_overlay_view)
+        val tabSchedule = view.findViewById<Button>(R.id.schedwall_tab_schedule)
+        val tabOverlay = view.findViewById<Button>(R.id.schedwall_tab_overlay)
+        schedWallShownDate = java.time.LocalDate.now()
+
+        fun showTab(schedule: Boolean) {
+            scheduleView.visibility = if (schedule) View.VISIBLE else View.GONE
+            overlayView.visibility = if (schedule) View.GONE else View.VISIBLE
+            tabSchedule.isSelected = schedule; tabOverlay.isSelected = !schedule
+        }
+
+        val gesture = object : android.view.GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: android.view.MotionEvent?, e2: android.view.MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+                val dx = e2.x - (e1?.x ?: e2.x); val dy = e2.y - (e1?.y ?: e2.y)
+                if (kotlin.math.abs(dx) > kotlin.math.abs(dy) && kotlin.math.abs(dx) > 120) {
+                    schedWallShownDate = if (dx < 0) schedWallShownDate.plusDays(1) else schedWallShownDate.minusDays(1)
+                    renderSchedWallScheduleFromWs(); return true
+                }
+                return false
+            }
+        }
+        val detector = android.view.GestureDetector(this, gesture)
+        scheduleView.setOnTouchListener { _, event -> detector.onTouchEvent(event); true }
+
+        fun renderSchedule() = renderSchedWallScheduleFromWs()
+
+        fun refresh() {
+            if (!isConnected) {
+                if (scheduleView.visibility == View.VISIBLE) content.findViewById<TextView>(R.id.schedwall_day)?.text = schedWallShownDate.dayOfWeek.name.substring(0, 3)
+                return
+            }
+            SchedWallRepository.fetchState({ state -> runOnUiThread { schedWallState = state; renderSchedWallScheduleFromWs() } }, { error -> runOnUiThread { if (scheduleView.visibility == View.VISIBLE) content.findViewById<TextView>(R.id.schedwall_date)?.text = error } })
+        }
+
+        val date = view.findViewById<EditText>(R.id.schedwall_overlay_date)
         val start = view.findViewById<EditText>(R.id.schedwall_start)
         val end = view.findViewById<EditText>(R.id.schedwall_end)
         val title = view.findViewById<EditText>(R.id.schedwall_title)
         val status = view.findViewById<TextView>(R.id.schedwall_status)
         date.setText(java.time.LocalDate.now().toString()); start.setText("9"); end.setText("10")
-        fun refresh() {
+        fun refreshOverlays() {
             if (!isConnected) {
                 status.text = if (SchedWallOfflineQueue.count(this) > 0) "${SchedWallOfflineQueue.count(this)} event(s) waiting to sync" else "Offline — new overlay events will be queued."
                 return
             }
-            SchedWallRepository.fetchOverlays({ overlays -> runOnUiThread {
-                val list = view.findViewById<LinearLayout>(R.id.schedwall_list); list.removeAllViews()
-                overlays.sortedWith(compareBy<SchedWallOverlay> { it.date }.thenBy { it.start }).forEach { event ->
-                    list.addView(TextView(this).apply { text = "${event.date}  ${event.start}:00–${event.end}:00  ${event.title}"; setTextColor(getColor(R.color.text_primary)); setPadding(0, 12.dp, 0, 12.dp) })
+            SchedWallRepository.fetchState({ state -> runOnUiThread {
+                val overlayList = view.findViewById<LinearLayout>(R.id.schedwall_list); overlayList.removeAllViews()
+                state.overlay.sortedWith(compareBy<SchedWallOverlay> { it.date }.thenBy { it.start }).forEach { event ->
+                    overlayList.addView(TextView(this).apply { text = "${event.date}  ${event.start}:00–${event.end}:00  ${event.title}"; setTextColor(getColor(R.color.text_primary)); setPadding(0, 12.dp, 0, 12.dp) })
                 }
                 status.text = if (SchedWallOfflineQueue.count(this) > 0) "${SchedWallOfflineQueue.count(this)} event(s) waiting to sync" else ""
             } }, { error -> runOnUiThread { status.text = if (SchedWallOfflineQueue.count(this) > 0) "${SchedWallOfflineQueue.count(this)} event(s) waiting to sync" else error } })
@@ -465,8 +902,11 @@ class MainActivity : ComponentActivity() {
             val eventDate = date.text.toString().trim(); val eventStart = start.text.toString().toIntOrNull(); val eventEnd = end.text.toString().toIntOrNull(); val eventTitle = title.text.toString().trim()
             if (!Regex("\\d{4}-\\d{2}-\\d{2}").matches(eventDate) || eventDate < java.time.LocalDate.now().toString() || eventStart == null || eventEnd == null || eventStart !in 7..23 || eventEnd !in 8..24 || eventEnd <= eventStart || eventTitle.isBlank()) { status.text = "Enter a future date, valid hours, and a title."; return@setOnClickListener }
             if (!isConnected) { SchedWallOfflineQueue.enqueue(this, eventDate, eventStart, eventEnd, eventTitle); title.setText(""); status.text = "Saved offline — it will sync on reconnect."; return@setOnClickListener }
-            SchedWallRepository.addOverlay(eventDate, eventStart, eventEnd, eventTitle, { runOnUiThread { title.setText(""); status.text = "Overlay event saved"; refresh() } }, { runOnUiThread { SchedWallOfflineQueue.enqueue(this, eventDate, eventStart, eventEnd, eventTitle); title.setText(""); status.text = "Saved offline — it will sync on reconnect." } })
+            SchedWallRepository.addOverlay(eventDate, eventStart, eventEnd, eventTitle, { runOnUiThread { title.setText(""); status.text = "Overlay event saved"; refreshOverlays() } }, { runOnUiThread { SchedWallOfflineQueue.enqueue(this, eventDate, eventStart, eventEnd, eventTitle); title.setText(""); status.text = "Saved offline — it will sync on reconnect." } })
         }
+        tabSchedule.setOnClickListener { showTab(true); refresh() }
+        tabOverlay.setOnClickListener { showTab(false); refreshOverlays() }
+        showTab(true)
         refresh()
     }
 
@@ -476,6 +916,13 @@ class MainActivity : ComponentActivity() {
         val saved = savedEndpoint()
         host.setText(saved?.host.orEmpty())
         port.setText((saved?.port ?: DEFAULT_PORT).toString())
+
+        val darkSwitch = view.findViewById<android.widget.Switch>(R.id.dark_mode_switch)
+        darkSwitch.isChecked = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_DARK_MODE, false)
+        darkSwitch.setOnCheckedChangeListener { _, checked ->
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_DARK_MODE, checked).apply()
+            recreate()
+        }
 
         view.findViewById<Button>(R.id.save_core_endpoint).setOnClickListener {
             val enteredHost = host.text.toString().trim()
@@ -866,22 +1313,33 @@ class MainActivity : ComponentActivity() {
         return when { days < 0 -> "EXPIRED ${-days} DAY${if (days == -1L) "" else "S"} AGO" to R.color.failure_muted_red; days <= 30 -> "EXPIRES IN $days DAY${if (days == 1L) "" else "S"}" to R.color.accent_amber; else -> "GOOD UNTIL $date" to R.color.ok }
     }
 
-    private fun bindTelemetry(view: View) {
-        renderTelemetry()
-    }
-
-    private fun bindNews(view: View) {
-        val refresh = view.findViewById<SwipeRefreshLayout>(R.id.news_refresh)
-        val load = { loadNews(view, refresh) }
-        refresh.setOnRefreshListener(load)
-        load()
-    }
-
     private fun bindTodo(view: View) {
-        val input = view.findViewById<EditText>(R.id.todo_input); val list = view.findViewById<LinearLayout>(R.id.todo_list); val status = view.findViewById<TextView>(R.id.todo_status)
-        fun load() = TodoRepository.fetch({ items -> runOnUiThread { if (currentScreen == Screen.TODO) renderTodos(items) } }, { error -> runOnUiThread { status.text = error } })
-        view.findViewById<Button>(R.id.todo_add).setOnClickListener { val text = input.text.toString().trim(); if (text.isNotBlank()) TodoRepository.add(text, { items -> runOnUiThread { input.text.clear(); renderTodos(items) } }, { error -> runOnUiThread { status.text = error } }) }
-        view.findViewById<Button>(R.id.todo_clear).setOnClickListener { TodoRepository.clear({ items -> runOnUiThread { renderTodos(items) } }, { error -> runOnUiThread { status.text = error } }) }
+        val input = view.findViewById<EditText>(R.id.todo_input); val status = view.findViewById<TextView>(R.id.todo_status); val chips = view.findViewById<LinearLayout>(R.id.todo_lists)
+        todoSelectedList = null
+        fun renderChips(state: TodoState) {
+            chips.removeAllViews()
+            fun chip(label: String, target: Int?, active: Boolean) {
+                chips.addView(TextView(this).apply {
+                    text = label; textSize = 13f; setPadding(14.dp, 8.dp, 14.dp, 8.dp); isClickable = true
+                    background = getDrawable(if (active) R.drawable.bg_chip_active else R.drawable.bg_chip)
+                    setTextColor(getColor(if (active) R.color.white else R.color.text_primary))
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = 8.dp }
+                    setOnClickListener { todoSelectedList = target; renderChips(state); renderTodos(state) }
+                })
+            }
+            chip("ALL", null, todoSelectedList == null)
+            state.lists.forEach { l -> chip(l.name, l.id, todoSelectedList == l.id) }
+        }
+        fun load() = TodoRepository.fetch({ state -> runOnUiThread { if (currentScreen == Screen.TODO) { renderChips(state); renderTodos(state) } } }, { error -> runOnUiThread { status.text = error } })
+        view.findViewById<Button>(R.id.todo_add).setOnClickListener { val text = input.text.toString().trim(); if (text.isNotBlank()) TodoRepository.add(text, todoSelectedList, { state -> runOnUiThread { input.text.clear(); renderChips(state); renderTodos(state) } }, { error -> runOnUiThread { status.text = error } }) }
+        view.findViewById<Button>(R.id.todo_new_list).setOnClickListener {
+            val field = EditText(this).apply { hint = "List heading" }
+            android.app.AlertDialog.Builder(this).setTitle("New list").setView(field).setNegativeButton("Cancel", null).setPositiveButton("Create") { _, _ ->
+                val name = field.text.toString().trim()
+                if (name.isNotBlank()) TodoRepository.addList(name, { state -> runOnUiThread { renderChips(state); renderTodos(state) } }, { error -> runOnUiThread { status.text = error } })
+            }.show()
+        }
+        view.findViewById<Button>(R.id.todo_clear).setOnClickListener { TodoRepository.clear({ state -> runOnUiThread { renderChips(state); renderTodos(state) } }, { error -> runOnUiThread { status.text = error } }) }
         load()
     }
 
@@ -1080,21 +1538,22 @@ class MainActivity : ComponentActivity() {
         reRender()
     }
 
+    private fun renderSpaceNotes(notes: List<SpaceNote>) {
+        val list = content.findViewById<LinearLayout>(R.id.space_list) ?: return
+        val status = content.findViewById<TextView>(R.id.space_status) ?: return
+        list.removeAllViews(); status.text = if (notes.isEmpty()) "No notes found." else ""
+        notes.forEach { note ->
+            list.addView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_macro_log); setPadding(14, 12, 14, 12); isClickable = true; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 8, 0, 0) }; setOnClickListener { openSpaceNote(note.filename) }
+                addView(TextView(this@MainActivity).apply { text = note.heading; textSize = 16f; setTextColor(getColor(R.color.text_primary)) }); addView(TextView(this@MainActivity).apply { text = "${note.tag} · ${relativeTime(note.timestamp)}"; textSize = 12f; setTextColor(getColor(R.color.accent_amber)); setPadding(0, 4, 0, 0) }); addView(TextView(this@MainActivity).apply { text = note.preview; textSize = 12f; setTextColor(getColor(R.color.text_muted)); setPadding(0, 6, 0, 0) })
+            })
+        }
+    }
+
     private fun bindSpace(view: View) {
         val filter = view.findViewById<AutoCompleteTextView>(R.id.space_filter); val status = view.findViewById<TextView>(R.id.space_status)
         val notesTab = view.findViewById<TextView>(R.id.space_notes_tab)
         val lecturesTab = view.findViewById<TextView>(R.id.space_lectures_tab)
-        var allNotes = emptyList<SpaceNote>()
         var allSubjects = emptyList<LectureSubject>()
-
-        fun renderNotes(notes: List<SpaceNote>) {
-            val list = view.findViewById<LinearLayout>(R.id.space_list); list.removeAllViews(); status.text = if (notes.isEmpty()) "No notes found." else ""
-            notes.forEach { note ->
-                list.addView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = getDrawable(R.drawable.bg_macro_log); setPadding(14, 12, 14, 12); isClickable = true; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 8, 0, 0) }; setOnClickListener { openSpaceNote(note.filename) }
-                    addView(TextView(this@MainActivity).apply { text = note.heading; textSize = 16f; setTextColor(getColor(R.color.text_primary)) }); addView(TextView(this@MainActivity).apply { text = "${note.tag} · ${relativeTime(note.timestamp)}"; textSize = 12f; setTextColor(getColor(R.color.accent_amber)); setPadding(0, 4, 0, 0) }); addView(TextView(this@MainActivity).apply { text = note.preview; textSize = 12f; setTextColor(getColor(R.color.text_muted)); setPadding(0, 6, 0, 0) })
-                })
-            }
-        }
 
         fun renderLectures() {
             val list = view.findViewById<LinearLayout>(R.id.space_list); list.removeAllViews()
@@ -1110,27 +1569,62 @@ class MainActivity : ComponentActivity() {
 
         fun renderNotesMode() {
             filter.visibility = View.VISIBLE
-            notesTab.setBackgroundResource(R.drawable.bg_action); notesTab.setTextColor(getColor(R.color.text_primary))
+            notesTab.setBackgroundResource(R.drawable.bg_action); notesTab.setTextColor(getColor(R.color.on_coral))
             lecturesTab.setBackgroundResource(R.drawable.bg_input); lecturesTab.setTextColor(getColor(R.color.text_muted))
-            CaptureRepository.fetchTags({ tags -> runOnUiThread { filter.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, listOf("All") + tags)); filter.setText("All", false) } }, { })
-            SpaceRepository.fetchNotes({ notes -> runOnUiThread { if (currentScreen == Screen.SPACE) { allNotes = notes; renderNotes(notes) } } }, { error -> runOnUiThread { status.text = error } })
+            CaptureRepository.fetchTags({ tags -> runOnUiThread { filter.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, listOf("All") + tags)); if (filter.text.isBlank()) filter.setText("", false) } }, { })
+            SpaceRepository.fetchNotes({ notes -> runOnUiThread { if (currentScreen == Screen.SPACE) { spaceAllNotes = notes; applySpaceFuzzyFilter() } } }, { error -> runOnUiThread { status.text = error } })
         }
 
         fun renderLecturesMode() {
             filter.visibility = View.GONE
-            lecturesTab.setBackgroundResource(R.drawable.bg_action); lecturesTab.setTextColor(getColor(R.color.text_primary))
+            lecturesTab.setBackgroundResource(R.drawable.bg_action); lecturesTab.setTextColor(getColor(R.color.on_coral))
             notesTab.setBackgroundResource(R.drawable.bg_input); notesTab.setTextColor(getColor(R.color.text_muted))
             LectureRepository.fetchSubjects({ subjects -> runOnUiThread { if (currentScreen == Screen.SPACE) { allSubjects = subjects; renderLectures() } } }, { error -> runOnUiThread { status.text = error } })
         }
 
         filter.setOnItemClickListener { _, _, _, _ ->
-            val selectedTag = filter.text.toString()
-            renderNotes(if (selectedTag == "All" || selectedTag.isBlank()) allNotes else allNotes.filter { it.tag == selectedTag })
+            applySpaceFuzzyFilter()
         }
         filter.setOnClickListener { if (filter.adapter?.count ?: 0 > 0) filter.showDropDown() }
+        filter.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) { applySpaceFuzzyFilter() }
+        })
         notesTab.setOnClickListener { renderNotesMode() }
         lecturesTab.setOnClickListener { renderLecturesMode() }
         renderNotesMode()
+    }
+
+    private fun fuzzyScore(query: String, candidate: String): Int {
+        val q = query.lowercase(); val c = candidate.lowercase()
+        if (q.isEmpty()) return 0
+        if (c.contains(q)) return 1000 - c.indexOf(q)
+        var qi = 0; var score = 0; var last = -2
+        for (ci in c.indices) {
+            if (qi < q.length && c[ci] == q[qi]) {
+                score += if (ci == last + 1) 2 else 1
+                if (c[ci] == q[qi] && ci > 0 && c[ci - 1] == ' ') score += 2
+                last = ci; qi++
+            }
+        }
+        return if (qi == q.length) score else -1
+    }
+
+    private fun applySpaceFuzzyFilter() {
+        if (currentScreen != Screen.SPACE) return
+        val filter = content.findViewById<AutoCompleteTextView>(R.id.space_filter) ?: return
+        val list = content.findViewById<LinearLayout>(R.id.space_list) ?: return
+        val status = content.findViewById<TextView>(R.id.space_status) ?: return
+        val allNotes = spaceAllNotes
+        val query = filter.text.toString().trim()
+        val scored = allNotes.mapNotNull { note ->
+            val haystack = listOf(note.heading, note.tag, note.preview, note.body).joinToString(" ")
+            val score = fuzzyScore(query, haystack)
+            if (score >= 0) score to note else null
+        }.sortedWith(compareByDescending<Pair<Int, SpaceNote>> { it.first }.thenByDescending { it.second.timestamp })
+        renderSpaceNotes(scored.map { it.second })
+        status.text = if (allNotes.isEmpty()) "No notes found." else if (query.isNotBlank() && scored.isEmpty()) "No fuzzy matches for \"$query\"." else ""
     }
 
     private fun openSubjectLectures(subjectSlug: String) {
@@ -1188,54 +1682,24 @@ class MainActivity : ComponentActivity() {
         SpaceRepository.fetchNote(filename, { note -> runOnUiThread { view.findViewById<TextView>(R.id.space_detail_heading).text = note.heading; view.findViewById<TextView>(R.id.space_detail_meta).text = "${note.tag} · ${relativeTime(note.timestamp)}"; view.findViewById<TextView>(R.id.space_detail_body).text = note.body; note.imageFilename?.let { image -> SpaceRepository.fetchImage(image, { bitmap -> runOnUiThread { view.findViewById<ImageView>(R.id.space_detail_image).apply { setImageBitmap(bitmap); visibility = View.VISIBLE } } }, { }) } } }, { error -> runOnUiThread { Toast.makeText(this, error, Toast.LENGTH_LONG).show(); showScreen(Screen.SPACE) } })
     }
 
-    private fun renderTodos(items: List<TodoItem>) {
+    private fun renderTodos(state: TodoState) {
         if (currentScreen != Screen.TODO) return
         val list = content.findViewById<LinearLayout>(R.id.todo_list) ?: return
         list.removeAllViews()
-        if (items.isEmpty()) { list.addView(TextView(this).apply { text = "Nothing to do."; setTextColor(getColor(R.color.text_muted)); setPadding(0, 16, 0, 0) }); return }
-        items.forEach { todo ->
+        val visible = state.items.filter { todoSelectedList == null || it.listId == todoSelectedList }
+            .sortedWith(compareBy<TodoItem> { it.checked }.thenByDescending { it.id })
+        if (visible.isEmpty()) { list.addView(TextView(this).apply { text = "Nothing to do."; setTextColor(getColor(R.color.text_muted)); setPadding(0, 16, 0, 0) }); return }
+        visible.forEach { todo ->
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; background = getDrawable(R.drawable.bg_macro_log); setPadding(10, 8, 8, 8); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 8, 0, 0) } }
-            row.addView(android.widget.CheckBox(this).apply { isChecked = todo.checked; setOnCheckedChangeListener { _, checked -> TodoRepository.update(todo.id, checked, { next -> runOnUiThread { renderTodos(next) } }, { }) } })
-            row.addView(TextView(this).apply { text = todo.text; setTextColor(getColor(if (todo.checked) R.color.text_muted else R.color.text_primary)); textSize = 15f; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
+            row.addView(android.widget.CheckBox(this).apply { 
+                isChecked = todo.checked 
+                buttonTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.onyx_coral))
+                setOnCheckedChangeListener { _, checked -> TodoRepository.update(todo.id, checked, { next -> runOnUiThread { renderTodos(next) } }, { }) } 
+            })
+            row.addView(TextView(this).apply { text = todo.text; setTextColor(getColor(if (todo.checked) R.color.text_muted else R.color.text_primary)); textSize = 15f; if (todo.checked) paintFlags = paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
             row.addView(Button(this).apply { text = "×"; textSize = 18f; setOnClickListener { TodoRepository.delete(todo.id, { next -> runOnUiThread { renderTodos(next) } }, { }) } })
             list.addView(row)
         }
-    }
-
-    private fun loadNews(view: View, refresh: SwipeRefreshLayout) {
-        val list = view.findViewById<LinearLayout>(R.id.news_list)
-        val status = view.findViewById<TextView>(R.id.news_status)
-        if (!refresh.isRefreshing) status.text = getString(R.string.news_loading)
-        NewsRepository.fetch(
-            onSuccess = { entries -> runOnUiThread {
-                if (currentScreen != Screen.NEWS) return@runOnUiThread
-                refresh.isRefreshing = false
-                list.removeAllViews()
-                status.text = if (entries.isEmpty()) "No news found. Add RSS URLs in the admin console." else ""
-                entries.forEach { entry ->
-                    val row = LinearLayout(this).apply {
-                        orientation = LinearLayout.VERTICAL
-                        background = getDrawable(R.drawable.bg_macro_log)
-                        setPadding(14, 12, 14, 12)
-                        isClickable = true
-                        isFocusable = true
-                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 8) }
-                        setOnClickListener {
-                            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(entry.link))) }
-                            catch (_: Exception) { Toast.makeText(this@MainActivity, "No browser available", Toast.LENGTH_SHORT).show() }
-                        }
-                    }
-                    row.addView(TextView(this).apply { text = entry.title; textSize = 15f; setTextColor(getColor(R.color.text_primary)) })
-                    row.addView(TextView(this).apply { text = "${entry.source} · ${relativeTime(entry.publishedAt)}"; textSize = 12f; setTextColor(getColor(R.color.text_muted)); setPadding(0, 5, 0, 0) })
-                    list.addView(row)
-                }
-            } },
-            onError = { error -> runOnUiThread {
-                if (currentScreen != Screen.NEWS) return@runOnUiThread
-                refresh.isRefreshing = false
-                status.text = error
-            } },
-        )
     }
 
     private fun relativeTime(publishedAt: String?): String {
@@ -1246,38 +1710,6 @@ class MainActivity : ComponentActivity() {
             minutes < 60 -> "${minutes}m ago"
             minutes < 1_440 -> "${minutes / 60}h ago"
             else -> "${minutes / 1_440}d ago"
-        }
-    }
-
-    private fun recordTelemetry(data: org.json.JSONObject) {
-        telemetry = data
-        val now = System.currentTimeMillis()
-        val ram = data.optJSONObject("ram")
-        val gpu = data.optJSONObject("gpu")
-        val totalRam = ram?.optLong("total", 0) ?: 0
-        telemetryHistory += TelemetrySample(
-            timestampMs = now,
-            cpu = data.optDouble("cpu", 0.0).toFloat(),
-            ram = if (totalRam > 0) (ram!!.optLong("used").toFloat() / totalRam * 100f) else 0f,
-            gpu = gpu?.optDouble("usage")?.toFloat(),
-        )
-        while ((telemetryHistory.firstOrNull()?.timestampMs ?: now) < now - 60_000) {
-            telemetryHistory.removeAt(0)
-        }
-        renderTelemetry()
-    }
-
-    private fun renderTelemetry() {
-        if (currentScreen != Screen.TELEMETRY) return
-        val compose = content.findViewById<ComposeView>(R.id.telemetry_compose) ?: return
-        val data = telemetry
-        compose.setContent {
-            TelemetryDashboard(
-                samples = telemetryHistory.toList(),
-                cpuTemp = data?.takeUnless { it.isNull("cpuTemp") }?.optDouble("cpuTemp")?.toFloat(),
-                gpuTemp = data?.optJSONObject("gpu")?.optDouble("temp")?.toFloat(),
-                gpuAvailable = data?.optJSONObject("gpu") != null,
-            )
         }
     }
 
@@ -1423,9 +1855,9 @@ class MainActivity : ComponentActivity() {
                 if (currentScreen != Screen.MACROS) return@runOnUiThread
                 val adapter = ArrayAdapter(
                     this,
-                    android.R.layout.simple_spinner_dropdown_item,
+                    R.layout.item_macro_preset_collapsed,
                     presets.names,
-                )
+                ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
                 presetSpinner.adapter = adapter
                 val activeIndex = presets.names.indexOf(presets.active).coerceAtLeast(0)
                 presetSpinner.setSelection(activeIndex)
@@ -1508,7 +1940,7 @@ class MainActivity : ComponentActivity() {
                     isAllCaps = false
                     textSize = 17f
                     elevation = 8f
-                    setTextColor(getColor(R.color.text_primary))
+                    setTextColor(getColor(R.color.on_card))
                     background = getDrawable(R.drawable.bg_macro_button)
                     contentDescription = macro.label
                     setOnClickListener { triggerMacro(macro, this) }
@@ -1525,10 +1957,10 @@ class MainActivity : ComponentActivity() {
 
     private fun triggerMacro(macro: MacroConfig, button: Button) {
         button.background = getDrawable(R.drawable.bg_macro_button_pressed)
-        button.setTextColor(getColor(R.color.background_graphite))
+        button.setTextColor(getColor(R.color.on_coral))
         button.postDelayed({
             button.background = getDrawable(R.drawable.bg_macro_button)
-            button.setTextColor(getColor(R.color.text_primary))
+            button.setTextColor(getColor(R.color.on_card))
         }, 180)
         val requestId = UUID.randomUUID().toString()
         val timeout = Runnable {
@@ -1578,8 +2010,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateConnectionIndicator() {
-        connectionLabel?.text = "${getString(if (isConnected) R.string.connected else R.string.disconnected)} · $connectionSource"
-        connectionDot?.setImageResource(if (isConnected) R.drawable.ic_status_connected else R.drawable.ic_status_disconnected)
+        val connected = isConnected
+        connectionLabel?.text = getString(if (connected) R.string.connected else R.string.disconnected).uppercase()
+        connectionLabel?.setTextColor(getColor(if (connected) R.color.onyx_coral else R.color.on_card_muted))
+        connectionBadge?.setBackgroundResource(if (connected) R.drawable.bg_badge_connected else R.drawable.bg_badge_disconnected)
+        connectionDot?.setImageResource(if (connected) R.drawable.ic_status_connected else R.drawable.ic_status_disconnected)
     }
 
     private fun updatePendingSyncIndicator(count: Int) {
@@ -1599,8 +2034,6 @@ class MainActivity : ComponentActivity() {
             Screen.TOUCHPAD -> R.string.nav_touchpad
             Screen.FILES -> R.string.nav_files
             Screen.INVENTORY -> R.string.nav_home
-            Screen.TELEMETRY -> R.string.nav_telemetry
-            Screen.NEWS -> R.string.nav_news
             Screen.TODO -> R.string.nav_todo
             Screen.SPACE -> R.string.nav_home
             Screen.SCHEDWALL -> R.string.nav_schedwall

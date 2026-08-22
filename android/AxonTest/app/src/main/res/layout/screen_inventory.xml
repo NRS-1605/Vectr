@@ -16,7 +16,7 @@
       <ImageView android:id="@+id/inventory_photo_preview" android:layout_width="76dp" android:layout_height="76dp" android:layout_marginTop="10dp" android:contentDescription="Selected item photo" android:scaleType="centerCrop" android:visibility="gone"/>
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp">
         <Button android:id="@+id/inventory_photo" android:layout_width="wrap_content" android:layout_height="44dp" android:text="ADD PHOTO"/>
-        <Button android:id="@+id/inventory_save" android:layout_width="0dp" android:layout_height="44dp" android:layout_marginStart="8dp" android:layout_weight="1" android:background="@drawable/bg_action" android:text="SAVE ITEM" android:textColor="#1A0A03"/>
+        <Button android:id="@+id/inventory_save" android:layout_width="0dp" android:layout_height="44dp" android:layout_marginStart="8dp" android:layout_weight="1" android:background="@drawable/bg_action" android:text="SAVE ITEM" android:textColor="@color/on_coral"/>
       </LinearLayout>
       <TextView android:id="@+id/inventory_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/text_muted" android:textSize="12sp"/>
     </LinearLayout>

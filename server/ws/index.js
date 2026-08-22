@@ -53,7 +53,7 @@ function setupWebSocketServer(server, handlers = {}) {
         return;
       }
 
-      const subscriptionMatch = /^(telemetry|macro|touchpad)\.(subscribe|unsubscribe)$/.exec(parsed?.type || "");
+      const subscriptionMatch = /^(macro|touchpad)\.(subscribe|unsubscribe)$/.exec(parsed?.type || "");
       if (subscriptionMatch) {
         const [, subscription, action] = subscriptionMatch;
         const subscribing = action === "subscribe";

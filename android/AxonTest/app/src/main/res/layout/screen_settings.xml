@@ -59,7 +59,7 @@
             android:layout_marginTop="20dp"
             android:background="@drawable/bg_action"
             android:text="@string/save_core_endpoint"
-            android:textColor="@color/background_graphite" />
+            android:textColor="@color/on_coral" />
 
         <Button
             android:id="@+id/use_auto_discovery"
@@ -68,6 +68,43 @@
             android:layout_marginTop="12dp"
             android:background="@drawable/bg_icon_button"
             android:text="@string/use_auto_discovery"
-            android:textColor="@color/text_primary" />
+            android:textColor="@color/onyx_paper" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dark theme"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Reverses the colors for night use"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <Switch
+                android:id="@+id/dark_mode_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

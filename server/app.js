@@ -11,8 +11,6 @@ const { createCaptureRoutes, createCaptureService } = require("./routes/capture"
 const { createMacroRoutes } = require("./routes/macro");
 const { createFileRoutes } = require("./routes/files");
 const { createLlmRoutes } = require("./routes/llm");
-const { createTelemetryService, createTelemetryRoutes } = require("./routes/telemetry");
-const { createNewsRoutes } = require("./routes/news");
 const { createTodoRoutes } = require("./routes/todos");
 const { createSchedWallRoutes } = require("./routes/schedwall");
 const { createInventoryRoutes } = require("./routes/inventory");
@@ -48,10 +46,6 @@ app.use(express.static(assetPath("public")));
 app.use("/api", healthRoutes);
 const wsHandlers = {};
 const wss = setupWebSocketServer(server, wsHandlers);
-const telemetryService = createTelemetryService(wss);
-wsHandlers.onSubscriptionChange = (subscription, subscribed) => {
-  if (subscription === "telemetry") telemetryService.adjustSubscribers(subscribed ? 1 : -1);
-};
 const captureService = createCaptureService(wss);
 wsHandlers.saveDeviceCapture = captureService.saveCapture;
 const clipboardSync = new platform.ClipboardSync((text) => {
@@ -66,8 +60,6 @@ app.use("/api", createCaptureRoutes(captureService));
 app.use("/api", createMacroRoutes());
 app.use("/api", createFileRoutes(wss));
 app.use("/api", createLlmRoutes());
-app.use("/api", createTelemetryRoutes(telemetryService));
-app.use("/api", createNewsRoutes());
 app.use("/api", createTodoRoutes(wss));
 app.use("/api/schedwall", createSchedWallRoutes(wss));
 app.use("/api", createInventoryRoutes());
@@ -90,8 +82,8 @@ app.use((error, _req, res, _next) => {
 async function start() {
   await prepareStorage();
   server.listen(PORT, () => {
-  console.log(`axon-core (${platform.name}) listening on port ${PORT}`);
-  localNetworkUrls(PORT).forEach((url) => console.log(`VeCTR address: ${url}`));
+  console.log(`Onyx core (${platform.name}) listening on port ${PORT}`);
+  localNetworkUrls(PORT).forEach((url) => console.log(`Onyx address: ${url}`));
   const stopPlatformServices = platform.startPlatformServices();
   server.once("close", stopPlatformServices);
   clipboardSync.start();
@@ -117,8 +109,8 @@ async function start() {
 }
 
 start().catch((error) => {
-  console.error(`axon-core could not prepare ~/axon storage: ${error.message}`);
+  console.error(`Onyx core could not prepare ~/axon storage: ${error.message}`);
   process.exitCode = 1;
 });
 
-server.once("close", () => { clipboardSync.stop(); telemetryService.stop(); });
+server.once("close", () => { clipboardSync.stop(); });

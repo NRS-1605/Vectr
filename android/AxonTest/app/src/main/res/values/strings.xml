@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">VeCTR</string>
-    <string name="app_name_upper">VeCTR</string>
+    <string name="app_name">Onyx</string>
+    <string name="app_name_upper">Onyx</string>
     <string name="connection_test">WebSocket connection test</string>
     <string name="send_test_ping">Send Test Ping</string>
     <string name="sent">Sent</string>
@@ -37,14 +37,8 @@
     <string name="nav_macros">Macros</string>
     <string name="nav_touchpad">Touchpad</string>
     <string name="nav_files">Files</string>
-    <string name="nav_telemetry">Telemetry</string>
-    <string name="nav_news">News</string>
     <string name="nav_todo">Todo</string>
     <string name="nav_schedwall">SchedWall</string>
-    <string name="news_title">NEWS</string>
-    <string name="news_loading">Loading your daily digest…</string>
-    <string name="telemetry_title">TELEMETRY</string>
-    <string name="telemetry_loading">Loading live system stats…</string>
     <string name="files_title">FILES</string>
     <string name="files_subtitle">Upload to the laptop or download shared files.</string>
     <string name="upload_file">SELECT FILES</string>
@@ -55,6 +49,25 @@
     <string name="home_subtitle">Your local device console</string>
     <string name="connected">Connected</string>
     <string name="disconnected">Disconnected</string>
+    <string name="home_hero">Your\nCommand Hub</string>
+    <string name="home_hero_sub">All your productivity tools unified in one seamless, paper-feel workspace.</string>
+    <string name="home_utility_suite">UTILITY SUITE</string>
+    <string name="home_focus">FOCUS</string>
+    <string name="conn_sync_status">SYNC STATUS</string>
+    <string name="conn_desktop_ip">DESKTOP IP</string>
+    <string name="conn_device">DEVICE</string>
+    <string name="conn_device_default">Onyx Core</string>
+    <string name="conn_last_sync">LAST SYNC</string>
+    <string name="conn_uptime">UPTIME</string>
+    <string name="conn_reconnect">RECONNECT</string>
+    <string name="pomodoro_title">Pomodoro Timer</string>
+    <string name="pomodoro_desc">Deep-work sessions with focus tracking</string>
+    <string name="pomodoro_session">Deep Work Session</string>
+    <string name="pomodoro_start">Start</string>
+    <string name="pomodoro_pause">Pause</string>
+    <string name="pomodoro_resume">Resume</string>
+    <string name="pomodoro_reset">Reset</string>
+    <string name="pomodoro_done">Focus session complete!</string>
     <string name="capture_title">CAPTURE</string>
     <string name="macro_activity">ACTIVITY</string>
     <string name="macro_preset">PRESET</string>

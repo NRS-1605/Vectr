@@ -43,12 +43,12 @@ class TouchpadSurfaceView @JvmOverloads constructor(
     private val stripWidth get() = 36f * resources.displayMetrics.density
     private val tickGap get() = 22f * resources.displayMetrics.density
     private val radius get() = 10f * resources.displayMetrics.density
-    private val surfaceColor get() = Color.rgb(33, 11, 16)
-    private val raisedColor get() = Color.rgb(24, 10, 14)
-    private val borderColor get() = Color.argb(72, 242, 232, 220)
-    private val lineColor get() = Color.rgb(163, 146, 126)
-    private val accentColor get() = Color.rgb(229, 72, 77)
-    private val textColor get() = Color.rgb(242, 232, 220)
+    private val surfaceColor get() = Color.rgb(61, 61, 61)
+    private val raisedColor get() = Color.rgb(74, 74, 74)
+    private val borderColor get() = Color.argb(72, 245, 240, 232)
+    private val lineColor get() = Color.rgb(185, 176, 162)
+    private val accentColor get() = Color.rgb(232, 93, 78)
+    private val textColor get() = Color.rgb(245, 240, 232)
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -82,7 +82,7 @@ class TouchpadSurfaceView @JvmOverloads constructor(
     }
 
     private fun drawReconnectOverlay(canvas: Canvas) {
-        paint.style = Paint.Style.FILL; paint.color = Color.argb(230, 24, 10, 14); canvas.drawRoundRect(pad, radius, radius, paint)
+        paint.style = Paint.Style.FILL; paint.color = Color.argb(230, 61, 61, 61); canvas.drawRoundRect(pad, radius, radius, paint)
         paint.color = textColor; paint.textSize = 18f * resources.displayMetrics.scaledDensity; paint.textAlign = Paint.Align.CENTER
         canvas.drawText("Reconnecting…", width / 2f, height / 2f - 18f * resources.displayMetrics.density, paint)
         val buttonWidth = 142f * resources.displayMetrics.density; val buttonHeight = 48f * resources.displayMetrics.density

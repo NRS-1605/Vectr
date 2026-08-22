@@ -1,17 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="28dp">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="28dp">
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.12" android:text="SCHEDWALL" android:textColor="@color/accent_amber" android:textSize="20sp" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Add a one-off overlay event. It will sync when your laptop is available." android:textColor="@color/text_muted" android:textSize="13sp" />
-    <EditText android:id="@+id/schedwall_date" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="20dp" android:background="@drawable/bg_input" android:hint="Date (YYYY-MM-DD)" android:inputType="text" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
-      <EditText android:id="@+id/schedwall_start" android:layout_width="0dp" android:layout_height="50dp" android:layout_weight="1" android:background="@drawable/bg_input" android:hint="Start (7–23)" android:inputType="number" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
-      <EditText android:id="@+id/schedwall_end" android:layout_width="0dp" android:layout_height="50dp" android:layout_marginStart="10dp" android:layout_weight="1" android:background="@drawable/bg_input" android:hint="End (8–24)" android:inputType="number" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:orientation="horizontal">
+        <Button android:id="@+id/schedwall_tab_schedule" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="MY SCHEDULE" />
+        <Button android:id="@+id/schedwall_tab_overlay" android:layout_width="0dp" android:layout_height="42dp" android:layout_marginStart="10dp" android:layout_weight="1" android:text="OVERLAY ADDER" />
     </LinearLayout>
-    <EditText android:id="@+id/schedwall_title" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="Event title" android:maxLength="120" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
-    <Button android:id="@+id/schedwall_add" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:text="ADD OVERLAY EVENT" />
-    <TextView android:id="@+id/schedwall_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:textColor="@color/text_muted" android:textSize="12sp" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:letterSpacing="0.12" android:text="UPCOMING OVERLAYS" android:textColor="@color/text_muted" android:textSize="12sp" />
-    <LinearLayout android:id="@+id/schedwall_list" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="vertical" />
-  </LinearLayout>
-</ScrollView>
+    <LinearLayout android:id="@+id/schedwall_schedule_view" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="14dp" android:orientation="vertical">
+        <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="10dp"><LinearLayout android:id="@+id/schedwall_schedule_list" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" /></ScrollView>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:orientation="vertical">
+            <TextView android:id="@+id/schedwall_day" android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.18" android:textColor="@color/text_primary" android:textSize="34sp" />
+            <TextView android:id="@+id/schedwall_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:textColor="@color/text_muted" android:textSize="14sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="◀" android:textColor="@color/text_muted" android:textSize="16sp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="swipe for day" android:textColor="@color/text_faint" android:textSize="12sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▶" android:textColor="@color/text_muted" android:textSize="16sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+    <ScrollView android:id="@+id/schedwall_overlay_view" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="14dp" android:fillViewport="true" android:visibility="gone">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Add a one-off overlay event. It will sync when your laptop is available." android:textColor="@color/text_muted" android:textSize="13sp" />
+        <EditText android:id="@+id/schedwall_overlay_date" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="20dp" android:background="@drawable/bg_input" android:hint="Date (YYYY-MM-DD)" android:inputType="text" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
+          <EditText android:id="@+id/schedwall_start" android:layout_width="0dp" android:layout_height="50dp" android:layout_weight="1" android:background="@drawable/bg_input" android:hint="Start (7–23)" android:inputType="number" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
+          <EditText android:id="@+id/schedwall_end" android:layout_width="0dp" android:layout_height="50dp" android:layout_marginStart="10dp" android:layout_weight="1" android:background="@drawable/bg_input" android:hint="End (8–24)" android:inputType="number" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
+        </LinearLayout>
+        <EditText android:id="@+id/schedwall_title" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="Event title" android:maxLength="120" android:paddingHorizontal="14dp" android:textColor="@color/text_primary" android:textColorHint="@color/text_muted" />
+        <Button android:id="@+id/schedwall_add" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:text="ADD OVERLAY EVENT" />
+        <TextView android:id="@+id/schedwall_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:textColor="@color/text_muted" android:textSize="12sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:letterSpacing="0.12" android:text="UPCOMING OVERLAYS" android:textColor="@color/text_muted" android:textSize="12sp" />
+        <LinearLayout android:id="@+id/schedwall_list" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="vertical" />
+      </LinearLayout>
+    </ScrollView>
+</LinearLayout>

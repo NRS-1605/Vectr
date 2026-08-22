@@ -6,7 +6,6 @@
   let socket;
   let reconnectTimer;
   let reconnectDelay = 1000;
-  let telemetrySubscribed = false;
   let currentMacroPreset = null;
 
   const elements = {
@@ -31,10 +30,6 @@
     addMacroPreset: document.querySelector("#add-macro-preset"),
     renameMacroPreset: document.querySelector("#rename-macro-preset"),
     deleteMacroPreset: document.querySelector("#delete-macro-preset"),
-    feedList: document.querySelector("#feed-list"),
-    addFeed: document.querySelector("#add-feed"),
-    saveFeeds: document.querySelector("#save-feeds"),
-    feedStatus: document.querySelector("#feed-status"),
     fileNotification: document.querySelector("#file-notification"),
     llmMode: document.querySelector("#llm-mode"),
     llmLocalModel: document.querySelector("#llm-local-model"),
@@ -45,37 +40,13 @@
     runLlmTest: document.querySelector("#run-llm-test"),
     llmTestStatus: document.querySelector("#llm-test-status"),
     llmTestResult: document.querySelector("#llm-test-result"),
-    telemetryCpuChart: document.querySelector("#telemetry-cpu-chart"),
-    telemetryRamChart: document.querySelector("#telemetry-ram-chart"),
-    telemetryCpuTempGauge: document.querySelector("#telemetry-cpu-temp-gauge"),
-    telemetryCpuTempLabel: document.querySelector("#telemetry-cpu-temp-label"),
-    telemetryGpuCard: document.querySelector("#telemetry-gpu-card"),
-    telemetryGpuChart: document.querySelector("#telemetry-gpu-chart"),
-    telemetryGpuTempGauge: document.querySelector("#telemetry-gpu-temp-gauge"),
-    telemetryGpuTempLabel: document.querySelector("#telemetry-gpu-temp-label"),
-    todoList: document.querySelector("#todo-list"), todoForm: document.querySelector("#todo-form"), todoInput: document.querySelector("#todo-input"), clearTodos: document.querySelector("#clear-todos"),
+    todoList: document.querySelector("#todo-list"), todoForm: document.querySelector("#todo-form"), todoInput: document.querySelector("#todo-input"), clearTodos: document.querySelector("#clear-todos"), todoLists: document.querySelector("#todo-lists"), todoListName: document.querySelector("#todo-list-name"), addList: document.querySelector("#add-list"),
     clipboardList: document.querySelector("#clipboard-list"), clearClipboard: document.querySelector("#clear-clipboard-history"),
   };
 
   function socketUrl() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     return `${protocol}//${window.location.host}/ws?deviceId=admin-console`;
-  }
-
-  function telemetryTabIsVisible() {
-    return document.querySelector("#telemetry-tab")?.classList.contains("is-active") && !document.hidden;
-  }
-
-  function syncTelemetrySubscription() {
-    const shouldSubscribe = telemetryTabIsVisible();
-    if (!socket || socket.readyState !== WebSocket.OPEN || shouldSubscribe === telemetrySubscribed) return;
-    socket.send(JSON.stringify({
-      type: shouldSubscribe ? "telemetry.subscribe" : "telemetry.unsubscribe",
-      payload: {},
-      deviceId: "admin-console",
-      timestamp: Date.now(),
-    }));
-    telemetrySubscribed = shouldSubscribe;
   }
 
   function setConnectionState(state, detail) {
@@ -94,61 +65,6 @@
 
   function compactJson(value) {
     try { return JSON.stringify(value); } catch (_) { return String(value); }
-  }
-
-  const telemetryHistory = { cpu: [], ram: [], gpu: [] };
-  let telemetryCharts;
-  const chartColor = "#79a7ff";
-  function temperatureColor(value) { return value >= 85 ? "#f27986" : value >= 70 ? "#f0b35f" : chartColor; }
-  function makeLine(canvas, label) {
-    return new Chart(canvas, { type: "line", data: { labels: [], datasets: [{ label, data: [], borderColor: chartColor, backgroundColor: "rgba(121,167,255,.16)", fill: true, tension: .3, pointRadius: 0, borderWidth: 2 }] }, options: { animation: false, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#949ba8", font: { family: "JetBrains Mono" } } } }, scales: { x: { ticks: { color: "#949ba8", maxTicksLimit: 6, font: { family: "JetBrains Mono" } }, grid: { color: "#2c3039" } }, y: { min: 0, max: 100, ticks: { color: "#949ba8", callback: (v) => `${v}%`, font: { family: "JetBrains Mono" } }, grid: { color: "#2c3039" } } } } });
-  }
-  function makeGauge(canvas) {
-    return new Chart(canvas, { type: "doughnut", data: { datasets: [{ data: [0, 100], backgroundColor: [chartColor, "#2c3039"], borderWidth: 0, circumference: 270, rotation: 225 }] }, options: { animation: false, cutout: "76%", plugins: { legend: { display: false }, tooltip: { enabled: false } } } });
-  }
-  function ensureTelemetryCharts() {
-    if (telemetryCharts || !window.Chart) return;
-    telemetryCharts = { cpu: makeLine(elements.telemetryCpuChart, "CPU"), ram: makeLine(elements.telemetryRamChart, "RAM"), cpuTemp: makeGauge(elements.telemetryCpuTempGauge), gpu: makeLine(elements.telemetryGpuChart, "GPU"), gpuTemp: makeGauge(elements.telemetryGpuTempGauge) };
-  }
-  function updateHistory(name, value, timestamp) {
-    const series = telemetryHistory[name];
-    series.push({ timestamp, value });
-    while (series[0] && series[0].timestamp < timestamp - 60_000) series.shift();
-    const chart = telemetryCharts[name];
-    chart.data.labels = series.map((point) => new Date(point.timestamp).toLocaleTimeString());
-    chart.data.datasets[0].data = series.map((point) => point.value);
-    chart.update("none");
-  }
-  function updateGauge(chart, label, temp) {
-    if (!Number.isFinite(temp)) {
-      chart.data.datasets[0].data = [0, 100];
-      chart.data.datasets[0].backgroundColor[0] = chartColor;
-      chart.update("none");
-      label.textContent = "—";
-      return;
-    }
-    chart.data.datasets[0].data = [Math.min(100, temp), Math.max(0, 100 - temp)];
-    chart.data.datasets[0].backgroundColor[0] = temperatureColor(temp);
-    chart.update("none");
-    label.textContent = `${temp}°C`;
-  }
-  function renderTelemetry(data) {
-    if (!data) return;
-    ensureTelemetryCharts();
-    if (!telemetryCharts) return;
-    const timestamp = Date.now();
-    updateHistory("cpu", Number(data.cpu) || 0, timestamp);
-    updateHistory("ram", data.ram?.total ? (data.ram.used / data.ram.total * 100) : 0, timestamp);
-    updateGauge(telemetryCharts.cpuTemp, elements.telemetryCpuTempLabel, data.cpuTemp == null ? NaN : Number(data.cpuTemp));
-    elements.telemetryGpuCard.hidden = !data.gpu;
-    if (data.gpu) {
-      updateHistory("gpu", Number(data.gpu.usage) || 0, timestamp);
-      updateGauge(telemetryCharts.gpuTemp, elements.telemetryGpuTempLabel, data.gpu.temp == null ? NaN : Number(data.gpu.temp));
-    }
-  }
-
-  async function loadTelemetry() {
-    try { const response = await fetch("/api/telemetry"); if (response.ok) renderTelemetry(await response.json()); } catch (_) { /* Live updates will retry. */ }
   }
 
   function renderDevices() {
@@ -365,10 +281,25 @@
     } catch (error) { elements.llmConfigStatus.textContent = error.message; elements.llmConfigStatus.classList.add("is-error"); }
   }
 
+  let todoSelectedList = null;
+  function renderTodoLists(lists) {
+    elements.todoLists.replaceChildren();
+    const all = document.createElement("button"); all.className = `todo-chip${todoSelectedList === null ? " is-active" : ""}`; all.textContent = "ALL";
+    all.addEventListener("click", () => { todoSelectedList = null; renderTodoLists(lists); renderTodos(); });
+    elements.todoLists.append(all);
+    lists.forEach((list) => {
+      const chip = document.createElement("button"); chip.className = `todo-chip${todoSelectedList === list.id ? " is-active" : ""}`; chip.textContent = list.name;
+      chip.addEventListener("click", () => { todoSelectedList = list.id; renderTodoLists(lists); renderTodos(); });
+      chip.addEventListener("contextmenu", async (event) => { event.preventDefault(); if (confirm(`Delete list "${list.name}" and its items?`)) await todoRequest(`/api/todos/lists/${list.id}`, "DELETE"); });
+      elements.todoLists.append(chip);
+    });
+  }
   function renderTodos(items) {
     elements.todoList.replaceChildren();
-    if (!items.length) { const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Nothing to do."; elements.todoList.append(empty); return; }
-    items.forEach((todo) => {
+    const visible = (items || todoItems).filter((todo) => todoSelectedList === null || todo.listId === todoSelectedList)
+      .sort((a, b) => (a.checked - b.checked) || (b.id - a.id));
+    if (!visible.length) { const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Nothing to do."; elements.todoList.append(empty); return; }
+    visible.forEach((todo) => {
       const row = document.createElement("div"); row.className = `todo-row${todo.checked ? " is-checked" : ""}`;
       const check = document.createElement("input"); check.type = "checkbox"; check.checked = todo.checked; check.addEventListener("change", () => todoRequest(`/api/todos/${todo.id}`, "PATCH", { checked: check.checked }));
       const text = document.createElement("span"); text.textContent = todo.text;
@@ -376,7 +307,13 @@
       row.append(check, text, remove); elements.todoList.append(row);
     });
   }
-  async function loadTodos() { try { const response = await fetch("/api/todos"); if (!response.ok) throw new Error(); renderTodos(await response.json()); } catch (_) { elements.todoList.textContent = "Could not load todos."; } }
+  let todoItems = [];
+  function renderTodoState(state) {
+    todoItems = Array.isArray(state?.items) ? state.items : [];
+    renderTodoLists(Array.isArray(state?.lists) ? state.lists : []);
+    renderTodos();
+  }
+  async function loadTodos() { try { const response = await fetch("/api/todos"); if (!response.ok) throw new Error(); renderTodoState(await response.json()); } catch (_) { elements.todoList.textContent = "Could not load todos."; } }
   async function todoRequest(url, method, body) { const response = await fetch(url, { method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined }); if (!response.ok) await loadTodos(); }
 
   function formatClipboardTime(timestamp) {
@@ -444,38 +381,6 @@
     }
   }
 
-  function addFeedRow(url = "") {
-    const row = document.createElement("div");
-    row.className = "feed-row";
-    const input = document.createElement("input");
-    input.className = "feed-input";
-    input.type = "url";
-    input.placeholder = "https://example.com/feed.xml";
-    input.value = url;
-    input.setAttribute("aria-label", "RSS feed URL");
-    const remove = document.createElement("button");
-    remove.className = "secondary-button";
-    remove.type = "button";
-    remove.textContent = "Remove";
-    remove.addEventListener("click", () => row.remove());
-    row.append(input, remove);
-    elements.feedList.append(row);
-  }
-
-  async function loadFeeds() {
-    try {
-      const response = await fetch("/api/news/feeds");
-      if (!response.ok) throw new Error("Could not load news feeds.");
-      const feeds = await response.json();
-      elements.feedList.replaceChildren();
-      feeds.forEach((feed) => addFeedRow(feed));
-      if (!feeds.length) addFeedRow();
-    } catch (error) {
-      elements.feedStatus.classList.add("is-error");
-      elements.feedStatus.textContent = error.message;
-    }
-  }
-
   function recordMessage(message) {
     const timestamp = typeof message.timestamp === "number" ? message.timestamp : Date.now();
     const normalized = { ...message, timestamp };
@@ -487,8 +392,7 @@
     }
     if (message.type === "capture.new") recordCapture(message.payload);
     if (message.type === "file.received" && typeof message.payload?.filename === "string") showFileNotification(message.payload.filename);
-    if (message.type === "telemetry.update") renderTelemetry(message.payload);
-    if (message.type === "todos.update" && Array.isArray(message.payload?.items)) renderTodos(message.payload.items);
+    if (message.type === "todos.update") renderTodoState(message.payload);
     if (message.type === "clipboard.history" && message.payload?.entry) {
       const tab = document.querySelector("#clipboard-tab");
       if (tab?.classList.contains("is-active")) {
@@ -513,7 +417,6 @@
     socket.addEventListener("open", () => {
       reconnectDelay = 1000;
       setConnectionState("Connected", "Listening on /ws");
-      syncTelemetrySubscription();
     });
     socket.addEventListener("message", (event) => {
       try {
@@ -523,7 +426,6 @@
       }
     });
     socket.addEventListener("close", () => {
-      telemetrySubscribed = false;
       setConnectionState("Reconnecting", `Retrying in ${Math.round(reconnectDelay / 1000)}s`);
       reconnectTimer = window.setTimeout(connect, reconnectDelay);
       reconnectDelay = Math.min(reconnectDelay * 2, 10000);
@@ -541,23 +443,20 @@
       document.querySelectorAll(".tab-panel").forEach((panel) => {
         panel.hidden = panel.id !== `${tab.dataset.tab}-panel`;
       });
-      if (tab.dataset.tab === "telemetry") {
-        // Charts are initialized while this panel is hidden; resize once it has
-        // a real layout box so Chart.js can paint the canvases correctly.
-        window.requestAnimationFrame(() => {
-          Object.values(telemetryCharts || {}).forEach((chart) => chart.resize());
-        });
-      }
-      syncTelemetrySubscription();
+      const pageTitle = document.querySelector("#page-title");
+      if (pageTitle) pageTitle.textContent = tab.innerText.trim() || tab.dataset.tab;
     });
   });
 
-  document.addEventListener("visibilitychange", syncTelemetrySubscription);
-  window.addEventListener("pagehide", () => {
-    if (telemetrySubscribed && socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: "telemetry.unsubscribe", payload: {}, deviceId: "admin-console", timestamp: Date.now() }));
-    }
-    telemetrySubscribed = false;
+  document.querySelectorAll(".laptop-tool-card[data-tab]").forEach((card) => {
+    card.addEventListener("click", () => {
+      const target = document.querySelector(`.tab[data-tab="${card.dataset.tab}"]`);
+      if (target) target.click();
+    });
+  });
+
+  document.querySelector("#settings-quick")?.addEventListener("click", () => {
+    document.querySelector("#settings-tab")?.click();
   });
 
   elements.clearLog.addEventListener("click", () => {
@@ -699,30 +598,14 @@
     finally { elements.saveLlmConfig.disabled = false; }
   });
 
-  elements.todoForm.addEventListener("submit", async (event) => { event.preventDefault(); const text = elements.todoInput.value.trim(); if (!text) return; await todoRequest("/api/todos", "POST", { text }); elements.todoInput.value = ""; });
+  elements.todoForm.addEventListener("submit", async (event) => { event.preventDefault(); const text = elements.todoInput.value.trim(); if (!text) return; await todoRequest("/api/todos", "POST", { text, listId: todoSelectedList }); elements.todoInput.value = ""; });
+  elements.addList.addEventListener("click", async () => { const name = elements.todoListName.value.trim(); if (!name) return; await todoRequest("/api/todos/lists", "POST", { name }); elements.todoListName.value = ""; });
+  elements.todoListName.addEventListener("keydown", async (event) => { if (event.key === "Enter") { event.preventDefault(); elements.addList.click(); } });
   elements.clearTodos.addEventListener("click", () => todoRequest("/api/todos/clear", "POST"));
   elements.clearClipboard.addEventListener("click", async () => {
     if (!confirm("Clear all clipboard history?")) return;
     await fetch("/api/clipboard/clear", { method: "POST" });
     loadClipboard();
-  });
-
-  elements.addFeed.addEventListener("click", () => addFeedRow());
-  elements.saveFeeds.addEventListener("click", async () => {
-    const feeds = [...elements.feedList.querySelectorAll(".feed-input")].map((input) => input.value.trim()).filter(Boolean);
-    elements.saveFeeds.disabled = true;
-    elements.feedStatus.classList.remove("is-error");
-    elements.feedStatus.textContent = "Saving…";
-    try {
-      const response = await fetch("/api/news/feeds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feeds }) });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || "Could not save news feeds.");
-      elements.feedStatus.textContent = "Saved";
-      window.setTimeout(() => { elements.feedStatus.textContent = ""; }, 2200);
-    } catch (error) {
-      elements.feedStatus.classList.add("is-error");
-      elements.feedStatus.textContent = error.message || "Could not save news feeds.";
-    } finally { elements.saveFeeds.disabled = false; }
   });
 
   elements.runLlmTest.addEventListener("click", async () => {
@@ -747,5 +630,5 @@
     if (t.id === "clipboard-tab") loadClipboard();
   }));
 
-  Promise.all([loadCaptures(), loadMacroPresets(), loadLlmConfig(), loadFeeds(), loadTodos()]).finally(connect);
+  Promise.all([loadCaptures(), loadMacroPresets(), loadLlmConfig(), loadTodos()]).finally(connect);
 })();

@@ -1,42 +1,110 @@
-# VeCTR
+<p align="center">
+  <img src="android/AxonTest/app/src/main/res/drawable-nodpi/onyx_logo.png" width="110" alt="Onyx" />
+</p>
 
-Your computer, in your pocket — over your local network. No cloud, no accounts, no subscriptions.
+<h1 align="center">ONYX</h1>
 
-VeCTR pairs an Android companion app with a self-hosted desktop core (Node.js). The phone controls the laptop, transfers files and clipboard, captures notes and voice, and stays in sync even when offline.
+<p align="center">
+  <a href="https://readme-typing-svg.demolab.com?font=EB+Garamond&size=24&pause=1000&color=E85D4E&center=true&vCenter=true&width=720&lines=Your+computer%2C+in+your+pocket.;No+cloud.+No+accounts.+No+subscriptions.;All+your+productivity+tools+unified."><img src="https://readme-typing-svg.demolab.com?font=EB+Garamond&size=24&pause=1000&color=E85D4E&center=true&vCenter=true&width=720&lines=Your+computer%2C+in+your+pocket.;No+cloud.+No+accounts.+No+subscriptions.;All+your+productivity+tools+unified." alt="Typing SVG" /></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Android-34A853?style=for-the-badge&logo=android&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/WebSocket-ws-010101?style=for-the-badge&logo=socketdotio&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
+  <img src="https://img.shields.io/badge/mDNS-bonjour-E85D4E?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/License-MIT-F5F0E8?style=for-the-badge&labelColor=2D2D2D" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Paper_Feel-%23F5F0E8?style=flat-square&labelColor=3D3D3D&color=F5F0E8" />
+  <img src="https://img.shields.io/badge/Charcoal-%233D3D3D?style=flat-square&labelColor=F5F0E8&color=3D3D3D" />
+  <img src="https://img.shields.io/badge/Coral-%23E85D4E?style=flat-square&color=E85D4E" />
+  &nbsp;·&nbsp; <code>offline-first</code> · <code>LAN-only</code> · <code>local Whisper</code>
+</p>
+
+<div align="center">
+
+<!-- Animated divider — pure SVG, no JS -->
+<svg width="100%" height="2" viewBox="0 0 800 2" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E85D4E" stop-opacity="0">
+        <animate attributeName="stop-color" values="#E85D4E;#F5F0E8;#E85D4E" dur="4s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" stop-color="#E85D4E">
+        <animate attributeName="offset" values="0.3;0.7;0.3" dur="4s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#E85D4E" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="2" fill="url(#g)" opacity="0.9"/>
+</svg>
+
+</div>
+
+> **Onyx pairs an Android companion app with a self-hosted desktop core (Node.js).** The phone becomes a remote for the laptop — touchpad, macros, files, clipboard, captures, todo, inventory, lectures — and stays in sync even when offline.
+
+<details>
+<summary><b>✨ Tap to see what it feels like</b></summary>
+<br>
+
+<p align="center">
+  <img src="android/AxonTest/app/src/main/res/drawable-nodpi/vectr_gradient.png" width="100%" style="border-radius:16px; max-width:800px;" alt="Onyx gradient" />
+</p>
+
+```
+  ●  FOCUS SESSION  25:00          ◀ swipe for day ▶
+  08 AM  ──  Deep Work: Onyx polish
+  09 AM  ──  Lecture: OS Threads
+  12 AM  ──  MADE BY ILLUMINATI.PY  // monospace, faint
+```
+
+*Paper texture in light • Greyish charcoal in dark • White halftone dots • SchedWall as live wallpaper on desktop.*
+
+</details>
 
 ---
 
-## Getting Started
+## 🧭 Navigation
 
-### 1. Desktop Core
+- **Home** — `Your Command Hub` hero above cards, last tile is **SchedWall**, footer `MADE BY ILLUMINATI.PY`
+- **Tap any card** — slides + fades (`56dp` + `scale 0.98` → `300ms Decelerate`) — back to Home slides opposite
 
-**Requires:** Node.js 18+ (LTS recommended)
+---
+
+## ⚡ Quick Start
+
+### 1 — Desktop Core
+
+**Requires:** Node.js 18+ (LTS)
 
 ```bash
-git clone <repo-url> && cd VeCTR
+git clone https://github.com/NRS-1605/Vectr && cd Vectr
 npm install
-cp .env.example .env        # optional: configure LLM keys
+cp .env.example .env        # optional: LLM keys
 npm start
 ```
 
-The server prints one or more `VeCTR address` URLs (e.g. `http://192.168.1.42:4101`). It also advertises itself via mDNS as `_vectr._tcp` so the phone can discover it automatically.
+Server prints `VeCTR address` URLs (e.g. `http://192.168.1.42:4101`) and advertises `_vectr._tcp` via mDNS.
 
-Open `http://localhost:4101` in a browser for the admin console.
+Open `http://localhost:4101` for the admin console.
 
-| Script | Command | Use case |
-|--------|---------|----------|
+| Script | Command | Use |
+|--------|---------|-----|
 | `npm start` | `node server/app.js` | Production |
-| `npm run dev` | `nodemon server/app.js` | Development with auto-reload |
+| `npm run dev` | `nodemon server/app.js` | Dev + auto-reload |
 
-**Windows:** When prompted, allow Node.js through Windows Defender Firewall on **Private networks**.
+> **Windows:** Allow Node.js through *Windows Defender Firewall → Private networks*.
 
-### 2. Android App
+### 2 — Android App
 
-**Option A — Install the APK**
+**Option A — APK**
 
-Download from the [releases page](https://github.com/NRS-1605/Vectr/raw/main/releases/Vectr-debug.apk) and sideload it.
+Download from [releases](https://github.com/NRS-1605/Vectr/raw/main/releases/Vectr-debug.apk) and sideload.
 
-**Option B — Build from source**
+**Option B — Build**
 
 ```bash
 cd android/AxonTest
@@ -44,55 +112,47 @@ cd android/AxonTest
 # APK at: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Open the project in Android Studio for development.
+### 3 — Connect
 
-### 3. Connect
+1. Same Wi-Fi for phone + laptop
+2. App discovers core via mDNS automatically
+3. If blocked → **Settings** → enter `IP:4101` → **Save**
 
-1. Connect your phone and laptop to the **same Wi-Fi network**.
-2. Open the VeCTR app — it discovers the core automatically via mDNS.
-3. If discovery fails (some networks block mDNS), go to **Settings**, enter the IP address and port (`4101`) printed by the server, and tap **Save**.
-
-The home screen shows a green connection indicator when paired.
+Home shows `● Connected` (coral) when paired.
 
 ---
 
-## Modules
+## 🧩 Modules
 
 ### Control & Transfer
 
-| Module | What it does |
-|--------|-------------|
-| **Touchpad** | Move cursor, left-click, right-click, scroll — uses `ydotool` (Linux) or `user32` (Windows) |
-| **Macros** | Trigger configurable keypresses or shell commands on the laptop. Configure in the admin console. |
-| **Files** | Upload from phone or download laptop files. Queues uploads while offline. |
-| **Clipboard** | Send phone clipboard text to the laptop, or receive laptop clipboard on the phone. |
+| Module | What it does | Icon |
+|--------|--------------|:----:|
+| **Touchpad** | Cursor, left/right click, scroll — `ydotool` (Linux) / `user32` (Windows) | 🖱️ |
+| **Macros** | Trigger keypresses / shell commands (admin console) | ⌨️ |
+| **Files** | Upload / download, queues while offline | 📁 |
+| **Clipboard** | Push phone clipboard → laptop & pull laptop history | 📋 |
 
 ### Capture & Organization
 
 | Module | What it does |
 |--------|-------------|
-| **Capture** | Save text notes, camera photos, or voice recordings. Voice is transcribed to text via local Whisper. |
-| **Space** | Browse saved captures and lecture notes. Switch between flat notes view and subject-organized lectures. |
-| **Lecture Pipeline** | Record lecture audio in Capture with Lecture Mode toggled on. The server transcribes, tags with subject/date/timetable slot, and saves as a per-subject Markdown file. Browse lectures by subject in Space. |
-| **Todo** | Shared checklist synced via WebSocket. Works offline. |
-| **Inventory** | Track food and medicine with expiry dates, quantities, and photos. |
-| **Goals** | Organize goals into Weekly, Monthly, Half-yearly, and Yearly plans. Link sub-goals to parent goals. |
-| **SchedWall** | Create recurring weekly schedules or one-off overlay events. The wallpaper view renders a live dark-blueprint HUD on your desktop. |
-
-### Awareness & Focus
-
-| Module | What it does |
-|--------|-------------|
-| **Telemetry** | Live CPU, RAM, temperature, and GPU usage from the laptop. |
-| **News** | Headlines from configured RSS feeds. |
+| **Capture** | Text, camera, voice (Whisper on laptop) |
+| **Space** | Browse captures + lectures — *fuzzy* search on heading/tag/preview/body |
+| **Lecture Pipeline** | `Capture → Lecture Mode` → auto transcribes + saves `~/axon/lectures/<subject>/lecture-<date>.md` with YAML |
+| **Todo** | Shared checklist — named lists, chips, checked sinks + strikethrough, offline queue |
+| **Inventory** | Food/medicine with expiry, qty, photos — `SOONEST EXPIRY FIRST` |
+| **Goals** | Weekly / Monthly / Half-yearly / Yearly, linked sub-goals |
+| **SchedWall** | Weekly timetable + one-off overlays. **Wallpaper** is a dark blueprint HUD (<code>SchedWall/views/wallpaper.html</code>); **phone** is 16 hourly rows `8 AM — 12 AM`, swipe days, same `HOUR_PX` / `fmtHour` / `checked:${id}-${ymd}` as wallpaper |
+| **Pomodoro** | `0h 25m` default — **Hours `0-12`** + **Minutes `0-59`** scroll pickers side-by-side, `59→0` bumps hour, `HH:MM:SS` / `MM:SS` display |
+| **CGPA** | Semester grades |
+| **Clipboard History** | From all devices |
 
 ---
 
-## Voice & Lecture Pipeline
+## 🎙️ Voice & Lecture Pipeline
 
-VeCTR uses a local [whisper.cpp](https://github.com/ggerganov/whisper.cpp) installation to transcribe voice recordings on the laptop — no internet required.
-
-### Setup
+Local [`whisper.cpp`](https://github.com/ggerganov/whisper.cpp) — no internet.
 
 ```bash
 git clone https://github.com/ggerganov/whisper.cpp.git ~/whisper.cpp
@@ -101,148 +161,163 @@ bash models/download-ggml-model.sh small
 make -j
 ```
 
-The server locates `whisper-cli` at `~/whisper.cpp/build/bin/whisper-cli` and the model at `~/whisper.cpp/models/ggml-small.bin` by default. Override with `WHISPER_BINARY` and `WHISPER_MODEL` environment variables.
+Server looks for `~/whisper.cpp/build/bin/whisper-cli` + `~/whisper.cpp/models/ggml-small.bin` (override `WHISPER_BINARY` / `WHISPER_MODEL`).
 
-### Lecture Recording Flow
+**Flow:**
 
-1. Open **Capture** on the phone.
-2. Toggle **Lecture Mode** — the subject field auto-populates from your SchedWall timetable (matched by current day + hour).
-3. Adjust subject/date if needed.
-4. Tap the mic to record, tap again to stop.
-5. The server transcribes and saves to `~/axon/lectures/<subject>/lecture-<date>.md` with YAML frontmatter.
-6. Browse lectures by subject in **Space → Lectures** tab.
+1. **Capture** → toggle **Lecture Mode** (subject auto-filled from SchedWall slot for now)
+2. Mic → record → tap again
+3. Server transcribes → `~/axon/lectures/<subject>/lecture-<date>.md`
+4. **Space → Lectures** → browse by subject
 
 ---
 
-## Admin Console
+## 🖥️ Admin Console
 
-The web admin console at `http://<laptop-ip>:4101` provides:
+`http://<laptop-ip>:4101`
 
-- **Status** — live WebSocket message log and connected devices
-- **Capture** — manual text capture and recent capture list
-- **Telemetry** — live CPU/RAM/temperature charts
-- **Todo** — add and manage shared tasks
-- **SchedWall** — one-off schedule overlays
-- **Clipboard** — clipboard history from all devices
-- **Settings** — macro buttons, LLM config (local Ollama or OpenAI), RSS feeds
+- **Status** — live WS log + devices
+- **Capture / Todo / SchedWall / Clipboard / Settings** — manage boards, macros, LLM (Ollama / OpenAI)
 
 ---
 
-## Storage Layout
+## 🗂️ Storage Layout
 
 ```
 ~/axon/
-├── captures/notes/           text captures and photos
-│   └── attachments/          uploaded images
-├── files/incoming/           files received from phone
-│   └── outgoing/             files queued for phone download
-├── inventory/photos/         inventory item photos
-├── lectures/                 lecture transcriptions (per-subject)
+├── captures/notes/           # text + photos
+│   └── attachments/
+├── files/incoming/           # from phone
+│   └── outgoing/             # to phone
+├── inventory/photos/
+├── lectures/                 # per-subject Markdown
 │   ├── mathematics/
 │   │   ├── lecture-2026-03-10.md
-│   │   ├── lecture-2026-03-12.md
 │   │   └── README.md
-│   ├── computer-science/
-│   └── ...
-└── axon-core.sqlite          database (clipboard history, todos, inventory, etc.)
+│   └── computer-science/
+└── axon-core.sqlite          # todos, inventory, clipboard, etc.
 ```
 
 ---
 
-## Technical Architecture
+## 🏗️ Technical Architecture
 
 ### Server (`server/`)
 
-| Layer | Technology |
-|-------|-----------|
-| HTTP | Express 4 — REST API on port 4101 |
-| Real-time | WebSocket (`ws`) — subscriptions for touchpad, macros, telemetry |
-| Database | SQLite (via `node:sqlite` bindings in `db.js`) |
-| Discovery | mDNS via `bonjour` — advertises as `_vectr._tcp` |
-| Voice | Shells out to local `whisper.cpp` binary |
-| Audio routing | `multer` for multipart file uploads |
+| Layer | Tech |
+|-------|------|
+| HTTP | Express 4 — REST on `:4101` |
+| Real-time | `ws` WebSocket (`/ws`) — `todos.update`, `schedwall.state` |
+| DB | SQLite (`node:sqlite` in `db.js`) |
+| Discovery | `bonjour` → `_vectr._tcp` |
+| Voice | `whisper.cpp` via shell |
+| Uploads | `multer` multipart |
 
-The server is an Express app with static file serving (`public/`, `SchedWall/views/`) and a set of REST API routes all mounted under `/api`. The WebSocket server shares the same HTTP server on the same port, path `/ws`.
+Express + static (`public/`, `SchedWall/views/`) + ` /api` routes. WS shares same HTTP server.
 
-### Android Client (`android/AxonTest/`)
+### Android (`android/AxonTest/`)
 
-| Layer | Technology |
-|-------|-----------|
-| UI | XML layouts + Compose (Telemetry dashboard only) |
-| Networking | OkHttp for REST + WebSocket |
-| State | SharedPreferences for offline queues and local data |
-| Architecture | Single-activity (`MainActivity`) with screen-based navigation via `ViewGroup` swapping. Singleton repository objects for data access. |
-
-The app uses a foreground service (`VectrForegroundService`) to maintain the WebSocket connection. Offline queues (`OfflineCaptureQueue`, `SchedWallOfflineQueue`, `InventoryOfflineQueue`, `OfflineFileQueue`) buffer operations in SharedPreferences and flush them in order when connectivity returns.
+| Layer | Tech |
+|-------|------|
+| UI | XML + `values` / `values-night` (`onyx_*` 31 keys) |
+| Net | OkHttp REST + WS |
+| State | `SharedPreferences` offline queues |
+| Nav | Single `MainActivity` — `showScreen()` slide+fade (`56dp`/`0.98` scale, `300ms Decelerate` forward, `190ms Accelerate` back) + card press scale `0.96` |
+| Theme | `Theme.Vectr` → `PREF_DARK_MODE` bool → `attachBaseContext` `uiMode NIGHT_YES/NO` — opening for `PREF_THEME` + `Theme.Vectr.Ocean` overlays |
+| Service | `VectrForegroundService` — persistent WS; queues flush on reconnect |
 
 ### WebSocket Protocol (`shared/message-contract.js`)
-
-Messages follow a uniform shape:
 
 ```json
 {
   "type": "capture.new",
-  "payload": { ... },
+  "payload": { "...": "..." },
   "deviceId": "android-xxxx",
   "timestamp": 1711123456789
 }
 ```
 
-Subscriptions (touchpad, macro, telemetry) require a subscribe/unsubscribe handshake before sending commands, enforced by a per-client subscription set on the server.
+Subscriptions (`macro`, `touchpad`) require subscribe handshake per-client.
 
-### Key Design Decisions
+### Key Decisions
 
-- **No cloud relay.** All traffic stays on the LAN. Do not expose port 4101 to the internet.
-- **Offline-first.** Each offline queue is a simple SharedPreferences JSON array flushed sequentially on reconnect.
-- **Local Whisper.** Voice transcription runs on the laptop via whisper.cpp. No data leaves your network.
-- **mDNS with manual fallback.** Bonjour handles discovery; if blocked, the user enters the IP manually.
-- **Markdown storage.** Lecture notes are plain Markdown files with YAML frontmatter — readable and editable without VeCTR.
+- **LAN only** — never expose `:4101` publicly
+- **Offline-first** — `SharedPreferences` JSON queues flushed sequentially
+- **Local Whisper** — no data leaves LAN
+- **mDNS + manual fallback** — bonjour + IP override
+- **Markdown lectures** — YAML frontmatter, editable outside app
 
 ---
 
-## Platform Support
+## 🎨 Theme
+
+Centralized in `values/colors.xml` (31 `onyx_*`/`text_*`/`surface_*`):
+
+- **Light** — Paper `#F5F0E8`, Charcoal `#3D3D3D` tiles → `on_card` light, `onyx_ink` dark, halftone charcoal dots
+- **Dark** — Greyish `#1C1A18` bg, Charcoal tiles flip to `F0EBE2` *(shade of white)*, `on_card` dark, `onyx_ink` light, halftone white via `android:tint`
+
+All cards/drawables use `@color/*` — adding a theme is a new `values-night-oled` / `Theme.Vectr.Ocean` palette + `PREF_THEME` branch in `attachBaseContext` (`MainActivity.kt:127`).
+
+> **Opening for more themes:** add `Theme.Vectr.Amoled` / `Ocean` / `Forest` in `styles.xml` + palette in `values`, switch via `setTheme()` in `attachBaseContext`. Settings Switch → Spinner.
+
+---
+
+## 💅 Polish
+
+- Home hero above cards, footer `MADE BY ILLUMINATI.PY` (`monospace` `10sp` `text_faint` centered)
+- Wordmark `Onyx` `serif 30sp` `layout_gravity="start"` — left, not centered
+- SchedWall phone: `8 AM — 12 AM` hourly slots (16) mirroring wallpaper (`HOUR_START=8`, `HOUR_END=24`, `fmtHour`), `box` `✓`, `time` faint, swipe day via `GestureDetector`
+- No arrows on home tiles — clean
+- Pomodoro `HH:MM:SS` + hour bar
+
+---
+
+## 📱 Platform Support
 
 | Feature | Linux | Windows |
 |---------|-------|---------|
-| Touchpad | `ydotool` (`/dev/uinput`) | `user32.dll` (via PowerShell) |
-| Clipboard | `wl-clipboard` | `Get-Clipboard` / `Set-Clipboard` (PowerShell) |
-| Daemon | `ydotoold` auto-spawned | Not required |
+| Touchpad | `ydotool` `/dev/uinput` | `user32.dll` (PowerShell) |
+| Clipboard | `wl-clipboard` | `Get-Clipboard` / `Set-Clipboard` |
+| Daemon | `ydotoold` auto-spawn | — |
 | mDNS | ✔ | ✔ |
 
-The platform module (`server/platform/index.js`) selects the correct adapter at startup based on `process.platform`.
+`server/platform/index.js` picks adapter via `process.platform`.
 
 ---
 
-## Privacy & Security
+## 🔒 Privacy & Security
 
-- All communication stays on your local network.
-- The server is unauthenticated by design for LAN use.
-- Do not port-forward or expose port 4101 to the public internet.
-- Shell macros execute arbitrary commands on the laptop — use only on trusted networks.
-- Voice transcription is processed locally via whisper.cpp.
+- LAN only, unauthenticated for local use — don't port-forward
+- Shell macros → arbitrary commands — trusted networks only
+- Voice → local `whisper.cpp`
 
 ---
 
-## Project Layout
+## 📂 Project Layout
 
 ```
-VeCTR/
-├── server/                Desktop core (Express + WebSocket)
-│   ├── app.js             Entry point, route registration
-│   ├── routes/            API route handlers
-│   ├── platform/          Linux/Windows platform adapters
-│   ├── ws/                WebSocket server
-│   ├── db.js              SQLite connection + schema
-│   ├── lecture-pipeline.js   Voice → transcript → Markdown
-│   └── storage.js         Filesystem storage setup
-├── android/AxonTest/      Android companion app
+Vectr/
+├── server/                # Express + WS
+│   ├── app.js             # routes + static
+│   ├── routes/            # API handlers
+│   ├── platform/          # Linux/Windows
+│   ├── ws/                # WebSocket
+│   ├── db.js              # SQLite + schema
+│   ├── lecture-pipeline.js
+│   └── storage.js
+├── android/AxonTest/      # Companion app
 │   └── app/src/main/java/com/vectr/
-│       ├── MainActivity.kt    Screen navigation + bindings
-│       ├── DeviceWebSocket.kt Persistent WebSocket client
-│       ├── *Repository.kt     REST/WebSocket data access
-│       └── *Queue.kt          Offline operation queues
-├── public/                Web admin console (HTML/CSS/JS)
-├── SchedWall/             Schedule overlay admin + wallpaper
-│   └── views/             admin.html, wallpaper.html
-└── shared/                Message contract shared with server
+│       ├── MainActivity.kt        # navigation + bindings
+│       ├── DeviceWebSocket.kt     # WS client
+│       ├── *Repository.kt
+│       └── *Queue.kt
+├── public/                # admin console
+├── SchedWall/views/       # admin.html · wallpaper.html (grid blueprint)
+└── shared/message-contract.js
 ```
+
+---
+
+<p align="center">
+  <sub><code>MADE BY ILLUMINATI.PY</code> — paper feel, charcoal tiles, coral accent.</sub>
+</p>

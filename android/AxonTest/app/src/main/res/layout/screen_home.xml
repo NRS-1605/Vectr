@@ -1,22 +1,326 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:background="@drawable/bg_home_hero" android:orientation="vertical" android:padding="22dp">
-      <FrameLayout android:layout_width="wrap_content" android:layout_height="52dp">
-        <TextView android:id="@+id/home_wordmark" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/space_mono" android:letterSpacing="-0.06" android:text="VeCTR" android:textColor="@color/text_primary" android:textSize="38sp" android:textStyle="bold" />
-        <TextView android:id="@+id/home_blink_dot" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|start" android:layout_marginStart="23dp" android:layout_marginBottom="0dp" android:text="●" android:textColor="@color/accent_amber" android:textSize="18sp" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+  <!-- geo-circle decorations (mockup deco-1..5) -->
+  <ImageView
+      android:layout_width="220dp"
+      android:layout_height="220dp"
+      android:alpha="0.9"
+      android:layout_gravity="top|end"
+      android:layout_marginTop="-60dp"
+      android:layout_marginEnd="-80dp"
+      android:importantForAccessibility="no"
+      android:src="@drawable/bg_geo_coral" />
+  <ImageView
+      android:layout_width="80dp"
+      android:layout_height="80dp"
+      android:alpha="0.8"
+      android:layout_gravity="top|start"
+      android:layout_marginTop="140dp"
+      android:layout_marginStart="-20dp"
+      android:importantForAccessibility="no"
+      android:src="@drawable/deco_halftone_charcoal"
+      android:tint="@color/onyx_ink" />
+  <ImageView
+      android:layout_width="140dp"
+      android:layout_height="140dp"
+      android:alpha="0.25"
+      android:layout_gravity="top|end"
+      android:layout_marginTop="80dp"
+      android:layout_marginEnd="40dp"
+      android:importantForAccessibility="no"
+      android:src="@drawable/bg_geo_ring" />
+  <ImageView
+      android:layout_width="50dp"
+      android:layout_height="50dp"
+      android:alpha="0.6"
+      android:layout_gravity="top|end"
+      android:layout_marginTop="320dp"
+      android:layout_marginEnd="10dp"
+      android:importantForAccessibility="no"
+      android:src="@drawable/deco_halftone_coral" />
+  <ImageView
+      android:layout_width="180dp"
+      android:layout_height="180dp"
+      android:alpha="0.08"
+      android:layout_gravity="bottom|start"
+      android:layout_marginBottom="180dp"
+      android:layout_marginStart="-90dp"
+      android:importantForAccessibility="no"
+      android:src="@drawable/bg_geo_ring" />
+
+  <ScrollView
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:fillViewport="true"
+      android:scrollbars="none">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+      <!-- Header -->
+      <FrameLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content">
+        <TextView
+            android:id="@+id/home_wordmark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start"
+            android:layout_marginTop="22dp"
+            android:fontFamily="serif"
+            android:gravity="start"
+            android:text="Onyx"
+            android:textColor="@color/onyx_ink"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+        <ImageButton
+            android:id="@+id/home_edit"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end"
+            android:background="@drawable/bg_header_icon"
+            android:contentDescription="@string/nav_settings"
+            android:padding="10dp"
+            android:src="@drawable/ic_settings"
+            android:tint="@color/onyx_paper" />
       </FrameLayout>
-      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:letterSpacing="0.15" android:text="LOCAL DEVICE CONSOLE" android:textColor="@color/text_muted" android:textSize="11sp" />
-      <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:orientation="horizontal"><TextView android:id="@+id/home_uptime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text_primary" android:textSize="11sp" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="18dp" android:text="BUILD 1.0.0" android:textColor="@color/text_muted" android:textSize="11sp" /></LinearLayout>
+
+      <!-- Hero -->
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="10dp"
+          android:fontFamily="serif"
+          android:lineSpacingExtra="2dp"
+          android:text="@string/home_hero"
+          android:textColor="@color/onyx_ink"
+          android:textSize="32sp"
+          android:textStyle="bold" />
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="10dp"
+          android:maxWidth="280dp"
+          android:text="@string/home_hero_sub"
+          android:textColor="@color/text_muted"
+          android:textSize="14sp" />
+      <LinearLayout
+          android:layout_width="44dp"
+          android:layout_height="44dp"
+          android:layout_marginTop="20dp"
+          android:background="@drawable/bg_hero_arrow"
+          android:gravity="center">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&#8594;"
+            android:textColor="@color/onyx_paper"
+            android:textSize="20sp" />
+      </LinearLayout>
+
+      <!-- Connection status card -->
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="28dp"
+          android:letterSpacing="0.15"
+          android:text="@string/home_utility_suite"
+          android:textColor="@color/text_muted"
+          android:textSize="12sp" />
+      <GridLayout
+          android:id="@+id/home_module_grid"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="14dp"
+          android:columnCount="2" />
+
+      <!-- Sync status (compact, informational) -->
+      <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="28dp"
+          android:background="@drawable/bg_home_status"
+          android:orientation="vertical"
+          android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+          <TextView
+              android:layout_width="0dp"
+              android:layout_height="wrap_content"
+              android:layout_weight="1"
+              android:letterSpacing="0.13"
+              android:text="@string/conn_sync_status"
+              android:textColor="@color/text_primary"
+              android:textSize="12sp"
+              android:textStyle="bold" />
+          <LinearLayout
+              android:id="@+id/connection_badge"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:background="@drawable/bg_badge_disconnected"
+              android:gravity="center_vertical"
+              android:orientation="horizontal"
+              android:paddingHorizontal="12dp"
+              android:paddingVertical="5dp">
+            <ImageView
+                android:id="@+id/connection_status_dot"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_status_disconnected" />
+            <TextView
+                android:id="@+id/connection_status_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="@string/disconnected"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+          </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="vertical">
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:letterSpacing="0.08"
+                  android:text="@string/conn_desktop_ip"
+                  android:textColor="@color/text_muted"
+                  android:textSize="10sp" />
+              <TextView
+                  android:id="@+id/home_endpoint"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="4dp"
+                  android:textColor="@color/text_primary"
+                  android:textSize="14sp"
+                  android:textStyle="bold" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:letterSpacing="0.08"
+                  android:text="@string/conn_device"
+                  android:textColor="@color/text_muted"
+                  android:textSize="10sp" />
+              <TextView
+                  android:id="@+id/conn_device"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="4dp"
+                  android:text="@string/conn_device_default"
+                  android:textColor="@color/text_primary"
+                  android:textSize="14sp"
+                  android:textStyle="bold" />
+            </LinearLayout>
+          </LinearLayout>
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:layout_marginTop="12dp"
+              android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:letterSpacing="0.08"
+                  android:text="@string/conn_last_sync"
+                  android:textColor="@color/text_muted"
+                  android:textSize="10sp" />
+              <TextView
+                  android:id="@+id/home_last_seen"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="4dp"
+                  android:textColor="@color/text_primary"
+                  android:textSize="14sp"
+                  android:textStyle="bold" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:letterSpacing="0.08"
+                  android:text="@string/conn_uptime"
+                  android:textColor="@color/text_muted"
+                  android:textSize="10sp" />
+              <TextView
+                  android:id="@+id/home_uptime"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="4dp"
+                  android:textColor="@color/text_primary"
+                  android:textSize="14sp"
+                  android:textStyle="bold" />
+            </LinearLayout>
+          </LinearLayout>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/home_reconnect"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_icon_button"
+            android:text="@string/conn_reconnect"
+            android:textColor="@color/onyx_paper"
+            android:textSize="12sp" />
+      </LinearLayout>
+
+      <TextView
+          android:id="@+id/pending_sync_indicator"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="14dp"
+          android:textColor="@color/accent_amber"
+          android:visibility="gone" />
+
+      <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="36dp"
+          android:fontFamily="monospace"
+          android:gravity="center"
+          android:letterSpacing="0.14"
+          android:text="MADE BY ILLUMINATI.PY"
+          android:textColor="@color/text_faint"
+          android:textSize="10sp" />
     </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:background="@drawable/bg_home_status" android:orientation="vertical" android:padding="20dp">
-      <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:gravity="center_vertical"><ImageView android:id="@+id/connection_status_dot" android:layout_width="11dp" android:layout_height="11dp" /><TextView android:id="@+id/connection_status_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="9dp" android:textColor="@color/text_primary" android:textSize="15sp" /></LinearLayout>
-      <TextView android:id="@+id/home_last_seen" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:textColor="@color/text_muted" android:textSize="12sp" />
-      <TextView android:id="@+id/home_endpoint" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_input" android:padding="12dp" android:textColor="@color/text_primary" android:textSize="12sp" />
-      <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp"><Button android:id="@+id/home_reconnect" android:layout_width="wrap_content" android:layout_height="44dp" android:text="RECONNECT" /><Button android:id="@+id/home_edit" android:layout_width="wrap_content" android:layout_height="44dp" android:layout_marginStart="10dp" android:text="EDIT" /></LinearLayout>
-    </LinearLayout>
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="26dp" android:gravity="center" android:letterSpacing="0.16" android:text="──────── MODULES ────────" android:textColor="@color/text_muted" android:textSize="12sp" />
-    <GridLayout android:id="@+id/home_module_grid" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:columnCount="2" />
-    <TextView android:id="@+id/pending_sync_indicator" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:textColor="@color/accent_amber" android:visibility="gone" />
-  </LinearLayout>
-</ScrollView>
+  </ScrollView>
+</FrameLayout>

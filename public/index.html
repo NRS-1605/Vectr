@@ -3,174 +3,239 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
-    <title>axon-core console</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+    <meta name="color-scheme" content="light" />
+    <title>Onyx console</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="/style.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
   </head>
   <body>
-    <main class="console-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">axon-core</p>
-          <h1>Admin console</h1>
+    <div class="onyx-app">
+      <aside class="onyx-sidebar">
+        <div class="geo-circle solid-coral deco-s1"></div>
+        <div class="geo-circle halftone deco-s2"></div>
+
+        <div class="sidebar-brand">
+          <div>
+            <div class="sidebar-logo">Onyx</div>
+            <div class="sidebar-sub">Admin Console</div>
+          </div>
         </div>
-        <div class="connection-state" aria-live="polite">
-          <span id="connection-indicator" class="status-dot status-dot--offline"></span>
-          <span id="connection-label">Connecting…</span>
+
+        <nav class="sidebar-nav" aria-label="Console sections" role="tablist">
+          <button class="tab sidebar-item is-active" id="status-tab" role="tab" aria-selected="true" aria-controls="status-panel" data-tab="status"><span class="si-icon">&#9632;</span><span>Dashboard</span></button>
+          <button class="tab sidebar-item" id="capture-tab" role="tab" aria-selected="false" aria-controls="capture-panel" data-tab="capture"><span class="si-icon">&#9998;</span><span>Capture</span></button>
+          <button class="tab sidebar-item" id="todo-tab" role="tab" aria-selected="false" aria-controls="todo-panel" data-tab="todo"><span class="si-icon">&#9745;</span><span>Todo List</span></button>
+          <button class="tab sidebar-item" id="clipboard-tab" role="tab" aria-selected="false" aria-controls="clipboard-panel" data-tab="clipboard"><span class="si-icon">&#9986;</span><span>Clipboard</span></button>
+          <a class="tab sidebar-item schedwall-link" id="schedwall-tab" href="/schedwall/admin"><span class="si-icon">&#9745;</span><span>SchedWall</span></a>
+          <button class="tab sidebar-item" id="settings-tab" role="tab" aria-selected="false" aria-controls="settings-panel" data-tab="settings"><span class="si-icon">&#9881;</span><span>Settings</span></button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="connection-state" aria-live="polite">
+            <span id="connection-indicator" class="status-dot status-dot--offline"></span>
+            <span id="connection-label">Connecting…</span>
+          </div>
         </div>
-      </header>
+      </aside>
 
-      <nav class="tabs" aria-label="Console sections" role="tablist">
-        <button class="tab is-active" id="status-tab" role="tab" aria-selected="true" aria-controls="status-panel" data-tab="status">Status</button>
-        <button class="tab" id="capture-tab" role="tab" aria-selected="false" aria-controls="capture-panel" data-tab="capture">Capture</button>
-        <button class="tab" id="telemetry-tab" role="tab" aria-selected="false" aria-controls="telemetry-panel" data-tab="telemetry">Telemetry</button>
-        <button class="tab" id="todo-tab" role="tab" aria-selected="false" aria-controls="todo-panel" data-tab="todo">Todo</button>
-        <a class="tab schedwall-link" id="schedwall-tab" href="/schedwall/admin">SchedWall</a>
-        <button class="tab" id="clipboard-tab" role="tab" aria-selected="false" aria-controls="clipboard-panel" data-tab="clipboard">Clipboard</button>
-        <button class="tab" id="settings-tab" role="tab" aria-selected="false" aria-controls="settings-panel" data-tab="settings">Settings</button>
-      </nav>
+      <main class="onyx-main paper-texture">
+        <div class="geo-circle solid-coral deco-m1"></div>
+        <div class="geo-circle outline-ring deco-m2"></div>
+        <div class="geo-circle halftone-coral deco-m3"></div>
 
-      <section class="tab-panel" id="status-panel" role="tabpanel" aria-labelledby="status-tab">
-        <div class="metrics" aria-label="Connection summary">
-          <article class="metric-card">
-            <span class="metric-label">Connected devices</span>
-            <strong class="metric-value" id="device-count">0</strong>
-            <span class="metric-detail" id="device-summary">Awaiting messages</span>
-          </article>
-          <article class="metric-card">
-            <span class="metric-label">WebSocket</span>
-            <strong class="metric-value metric-value--state" id="socket-state">Connecting</strong>
-            <span class="metric-detail" id="socket-detail">Opening a live connection</span>
-          </article>
+        <div class="onyx-topbar">
+          <h2 id="page-title">Dashboard</h2>
+          <div class="topbar-actions">
+            <div class="search-pill"><span>&#9906;</span><span>Search anything...</span></div>
+            <div class="icon-pill" title="Settings" id="settings-quick">&#9881;</div>
+          </div>
         </div>
-        <p class="file-notification" id="file-notification" role="status" hidden></p>
 
-        <section class="panel" aria-labelledby="devices-heading">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Live activity</p>
-              <h2 id="devices-heading">Devices</h2>
+        <section class="tab-panel" id="status-panel" role="tabpanel" aria-labelledby="status-tab">
+          <p class="file-notification" id="file-notification" role="status" hidden></p>
+
+          <div class="stats-row">
+            <article class="stat-card">
+              <div class="stat-deco"></div>
+              <strong class="stat-num" id="device-count">0</strong>
+              <span class="stat-label">Connected Devices</span>
+              <span class="stat-detail" id="device-summary">Awaiting messages</span>
+            </article>
+            <article class="stat-card">
+              <div class="stat-deco"></div>
+              <strong class="stat-num stat-num--state" id="socket-state">Connecting</strong>
+              <span class="stat-label">WebSocket</span>
+              <span class="stat-detail" id="socket-detail">Opening a live connection</span>
+            </article>
+            <article class="stat-card">
+              <div class="stat-deco"></div>
+              <strong class="stat-num" id="stat-tools-num">08</strong>
+              <span class="stat-label">Utility Tools</span>
+              <span class="stat-detail">One seamless workspace</span>
+            </article>
+            <article class="stat-card">
+              <div class="stat-deco"></div>
+              <strong class="stat-num stat-num--coral" id="stat-macros-num">8</strong>
+              <span class="stat-label">Macro Keys</span>
+              <span class="stat-detail">Programmable surface</span>
+            </article>
+          </div>
+
+          <div class="section-title">Utility Suite</div>
+          <div class="laptop-tools-grid">
+            <button class="laptop-tool-card featured" data-tab="capture" type="button">
+              <div class="lt-icon">&#9998;</div>
+              <div class="lt-title">Capture</div>
+              <div class="lt-desc">Notes, photos, and voice saved straight from any device.</div>
+              <div class="lt-arrow">&#8594;</div>
+            </button>
+            <button class="laptop-tool-card" data-tab="todo" type="button">
+              <div class="lt-icon">&#9745;</div>
+              <div class="lt-title">Todo List</div>
+              <div class="lt-desc">Task management with priority levels and sync.</div>
+              <div class="lt-arrow">&#8594;</div>
+            </button>
+            <button class="laptop-tool-card" data-tab="clipboard" type="button">
+              <div class="lt-icon">&#9986;</div>
+              <div class="lt-title">Clipboard Sync</div>
+              <div class="lt-desc">Real-time cross-device clipboard sharing with history.</div>
+              <div class="lt-arrow">&#8594;</div>
+            </button>
+            <a class="laptop-tool-card" href="/schedwall/admin">
+              <div class="lt-icon">&#9745;</div>
+              <div class="lt-title">SchedWall</div>
+              <div class="lt-desc">Time-blocking with recurring weekly templates.</div>
+              <div class="lt-arrow">&#8594;</div>
+            </a>
+            <button class="laptop-tool-card featured" data-tab="settings" type="button">
+              <div class="lt-icon">&#9000;</div>
+              <div class="lt-title">Macro Keys</div>
+              <div class="lt-desc">Programmable remote control surface for the desktop.</div>
+              <div class="lt-arrow">&#8594;</div>
+            </button>
+            <button class="laptop-tool-card" data-tab="settings" type="button">
+              <div class="lt-icon">&#9733;</div>
+              <div class="lt-title">AI Assistant</div>
+              <div class="lt-desc">Route prompts to local or cloud language models.</div>
+              <div class="lt-arrow">&#8594;</div>
+            </button>
+          </div>
+
+          <div class="recent-section">
+            <div class="section-header">
+              <h3>Live Activity</h3>
             </div>
-          </div>
-          <div class="device-list" id="device-list">
-            <p class="empty-state">No device messages received yet.</p>
+            <section class="panel" aria-labelledby="devices-heading">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Live activity</p>
+                  <h2 id="devices-heading">Devices</h2>
+                </div>
+              </div>
+              <div class="device-list" id="device-list">
+                <p class="empty-state">No device messages received yet.</p>
+              </div>
+            </section>
+            <section class="panel" aria-labelledby="log-heading">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Incoming stream</p>
+                  <h2 id="log-heading">Message log</h2>
+                </div>
+                <button class="text-button" id="clear-log" type="button">Clear</button>
+              </div>
+              <div class="log" id="message-log" role="log" aria-live="polite" aria-label="Recent WebSocket messages">
+                <p class="empty-state">Waiting for WebSocket messages…</p>
+              </div>
+            </section>
           </div>
         </section>
 
-        <section class="panel" aria-labelledby="log-heading">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Incoming stream</p>
-              <h2 id="log-heading">Message log</h2>
+        <section class="tab-panel" id="capture-panel" role="tabpanel" aria-labelledby="capture-tab" hidden>
+          <section class="panel capture-panel" aria-labelledby="capture-heading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Inbox</p>
+                <h2 id="capture-heading">New capture</h2>
+              </div>
             </div>
-            <button class="text-button" id="clear-log" type="button">Clear</button>
-          </div>
-          <div class="log" id="message-log" role="log" aria-live="polite" aria-label="Recent WebSocket messages">
-            <p class="empty-state">Waiting for WebSocket messages…</p>
-          </div>
-        </section>
-      </section>
+            <form id="capture-form" class="capture-form">
+              <label for="capture-text">Text</label>
+              <textarea id="capture-text" name="text" rows="8" placeholder="Write something to save to the inbox…" required></textarea>
+              <div class="capture-actions">
+                <p class="form-status" id="capture-status" aria-live="polite"></p>
+                <button class="primary-button" id="capture-button" type="submit">Capture</button>
+              </div>
+            </form>
+          </section>
 
-      <section class="tab-panel" id="telemetry-panel" role="tabpanel" aria-labelledby="telemetry-tab" hidden>
-        <div class="telemetry-grid" aria-label="Live system telemetry">
-          <section class="telemetry-card"><h2>CPU usage</h2><canvas id="telemetry-cpu-chart"></canvas></section>
-          <section class="telemetry-card"><h2>RAM usage</h2><canvas id="telemetry-ram-chart"></canvas></section>
-          <section class="telemetry-card telemetry-gauge-card"><h2>CPU temperature</h2><div class="gauge-wrap"><canvas id="telemetry-cpu-temp-gauge"></canvas><strong id="telemetry-cpu-temp-label">—</strong></div></section>
-          <section class="telemetry-card" id="telemetry-gpu-card" hidden><h2>GPU usage</h2><canvas id="telemetry-gpu-chart"></canvas><div class="gauge-wrap gauge-wrap--small"><canvas id="telemetry-gpu-temp-gauge"></canvas><strong id="telemetry-gpu-temp-label">—</strong></div></section>
-        </div>
-      </section>
-
-      <section class="tab-panel" id="capture-panel" role="tabpanel" aria-labelledby="capture-tab" hidden>
-        <section class="panel capture-panel" aria-labelledby="capture-heading">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Inbox</p>
-              <h2 id="capture-heading">New capture</h2>
+          <section class="panel" aria-labelledby="recent-captures-heading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Live stream</p>
+                <h2 id="recent-captures-heading">Recent captures</h2>
+              </div>
             </div>
-          </div>
-          <form id="capture-form" class="capture-form">
-            <label for="capture-text">Text</label>
-            <textarea id="capture-text" name="text" rows="8" placeholder="Write something to save to the inbox…" required></textarea>
-            <div class="capture-actions">
-              <p class="form-status" id="capture-status" aria-live="polite"></p>
-              <button class="primary-button" id="capture-button" type="submit">Capture</button>
+            <div class="capture-list" id="capture-list" aria-live="polite">
+              <p class="empty-state">Waiting for new captures…</p>
             </div>
-          </form>
+          </section>
         </section>
 
-        <section class="panel" aria-labelledby="recent-captures-heading">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Live stream</p>
-              <h2 id="recent-captures-heading">Recent captures</h2>
+        <section class="tab-panel" id="todo-panel" role="tabpanel" aria-labelledby="todo-tab" hidden>
+          <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Shared list</p><h2>Todo</h2></div><button class="text-button" id="clear-todos" type="button">Clear All</button></div>
+            <div class="todo-lists" id="todo-lists"></div>
+            <div class="todo-lists-actions"><input id="todo-list-name" type="text" placeholder="New list heading…" /><button class="primary-button" id="add-list" type="button">New List</button></div>
+            <form class="todo-add" id="todo-form"><input id="todo-input" type="text" placeholder="Add a task…" required /><button class="primary-button" type="submit">Add</button></form>
+            <div class="todo-list" id="todo-list"><p class="empty-state">Loading todos…</p></div>
+          </section>
+        </section>
+
+        <section class="tab-panel" id="clipboard-panel" role="tabpanel" aria-labelledby="clipboard-tab" hidden>
+          <section class="panel"><div class="panel-heading"><div><p class="eyebrow">History</p><h2>Clipboard</h2></div><button class="text-button" id="clear-clipboard-history" type="button">Clear</button></div>
+            <div class="clipboard-list" id="clipboard-list"><p class="empty-state">Loading clipboard history…</p></div>
+          </section>
+        </section>
+
+        <section class="tab-panel" id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
+          <section class="panel" aria-labelledby="llm-settings-heading">
+            <div class="panel-heading"><div><p class="eyebrow">AI router</p><h2 id="llm-settings-heading">LLM Settings</h2></div></div>
+            <div class="capture-form">
+              <label>Default mode <select id="llm-mode"><option value="local">Local (Ollama)</option><option value="cloud">Cloud (OpenAI)</option></select></label>
+              <label>Local model <input id="llm-local-model" type="text" /></label>
+              <label>Cloud model <input id="llm-cloud-model" type="text" /></label>
+              <div class="capture-actions"><p class="form-status" id="llm-config-status" aria-live="polite"></p><button class="primary-button" id="save-llm-config" type="button">Save LLM Settings</button></div>
             </div>
-          </div>
-          <div class="capture-list" id="capture-list" aria-live="polite">
-            <p class="empty-state">Waiting for new captures…</p>
-          </div>
-        </section>
-      </section>
-
-      <section class="tab-panel" id="todo-panel" role="tabpanel" aria-labelledby="todo-tab" hidden>
-        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Shared list</p><h2>Todo</h2></div><button class="text-button" id="clear-todos" type="button">Clear All</button></div>
-          <form class="todo-add" id="todo-form"><input id="todo-input" type="text" placeholder="Add a task…" required /><button class="primary-button" type="submit">Add</button></form>
-          <div class="todo-list" id="todo-list"><p class="empty-state">Loading todos…</p></div>
-        </section>
-      </section>
-
-      <section class="tab-panel" id="clipboard-panel" role="tabpanel" aria-labelledby="clipboard-tab" hidden>
-        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">History</p><h2>Clipboard</h2></div><button class="text-button" id="clear-clipboard-history" type="button">Clear</button></div>
-          <div class="clipboard-list" id="clipboard-list"><p class="empty-state">Loading clipboard history…</p></div>
-        </section>
-      </section>
-
-      <section class="tab-panel" id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
-        <section class="panel" aria-labelledby="news-feeds-heading">
-          <div class="panel-heading"><div><p class="eyebrow">Daily digest</p><h2 id="news-feeds-heading">News Feeds</h2></div></div>
-          <div class="feed-list" id="feed-list"><p class="empty-state">Loading feed configuration…</p></div>
-          <div class="feed-actions"><button class="secondary-button" id="add-feed" type="button">Add Feed</button><div class="capture-actions"><p class="form-status" id="feed-status" aria-live="polite"></p><button class="primary-button" id="save-feeds" type="button">Save Feeds</button></div></div>
-        </section>
-        <section class="panel" aria-labelledby="llm-settings-heading">
-          <div class="panel-heading"><div><p class="eyebrow">AI router</p><h2 id="llm-settings-heading">LLM Settings</h2></div></div>
-          <div class="capture-form">
-            <label>Default mode <select id="llm-mode"><option value="local">Local (Ollama)</option><option value="cloud">Cloud (OpenAI)</option></select></label>
-            <label>Local model <input id="llm-local-model" type="text" /></label>
-            <label>Cloud model <input id="llm-cloud-model" type="text" /></label>
-            <div class="capture-actions"><p class="form-status" id="llm-config-status" aria-live="polite"></p><button class="primary-button" id="save-llm-config" type="button">Save LLM Settings</button></div>
-          </div>
-        </section>
-        <section class="panel" aria-labelledby="llm-test-heading">
-          <div class="panel-heading"><div><p class="eyebrow">Connection test</p><h2 id="llm-test-heading">Run a prompt</h2></div></div>
-          <div class="capture-form"><label for="llm-test-prompt">Prompt</label><textarea id="llm-test-prompt" rows="4" placeholder="Ask the selected provider…"></textarea><div class="capture-actions"><p class="form-status" id="llm-test-status" aria-live="polite"></p><button class="primary-button" id="run-llm-test" type="button">Run</button></div><pre class="log" id="llm-test-result" hidden></pre></div>
-        </section>
-        <section class="panel" aria-labelledby="macro-settings-heading">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Settings</p>
-              <h2 id="macro-settings-heading">Macro Buttons</h2>
+          </section>
+          <section class="panel" aria-labelledby="llm-test-heading">
+            <div class="panel-heading"><div><p class="eyebrow">Connection test</p><h2 id="llm-test-heading">Run a prompt</h2></div></div>
+            <div class="capture-form"><label for="llm-test-prompt">Prompt</label><textarea id="llm-test-prompt" rows="4" placeholder="Ask the selected provider…"></textarea><div class="capture-actions"><p class="form-status" id="llm-test-status" aria-live="polite"></p><button class="primary-button" id="run-llm-test" type="button">Run</button></div><pre class="log" id="llm-test-result" hidden></pre></div>
+          </section>
+          <section class="panel" aria-labelledby="macro-settings-heading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Settings</p>
+                <h2 id="macro-settings-heading">Macro Buttons</h2>
+              </div>
             </div>
-          </div>
-          <div class="macro-presets">
-            <label for="macro-preset-select">Preset</label>
-            <select id="macro-preset-select" aria-label="Macro preset"></select>
-            <button class="secondary-button" id="add-macro-preset" type="button">New</button>
-            <button class="secondary-button" id="rename-macro-preset" type="button">Rename</button>
-            <button class="secondary-button" id="delete-macro-preset" type="button">Delete</button>
-          </div>
-          <div class="macro-list" id="macro-list">
-            <p class="empty-state">Loading macro configuration…</p>
-          </div>
-          <div class="macro-actions">
-            <p class="form-status" id="macro-status" aria-live="polite"></p>
-            <button class="primary-button" id="save-macros" type="button">Save Macros</button>
-          </div>
+            <div class="macro-presets">
+              <label for="macro-preset-select">Preset</label>
+              <select id="macro-preset-select" aria-label="Macro preset"></select>
+              <button class="secondary-button" id="add-macro-preset" type="button">New</button>
+              <button class="secondary-button" id="rename-macro-preset" type="button">Rename</button>
+              <button class="secondary-button" id="delete-macro-preset" type="button">Delete</button>
+            </div>
+            <div class="macro-list" id="macro-list">
+              <p class="empty-state">Loading macro configuration…</p>
+            </div>
+            <div class="macro-actions">
+              <p class="form-status" id="macro-status" aria-live="polite"></p>
+              <button class="primary-button" id="save-macros" type="button">Save Macros</button>
+            </div>
+          </section>
         </section>
-      </section>
-    </main>
+      </main>
+    </div>
     <script src="/app.js"></script>
   </body>
 </html>
