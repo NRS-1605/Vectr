@@ -52,7 +52,7 @@
 
 **Desktop:** `git clone && npm install && npm start` → prints `VeCTR address` `http://<ip>:4101` (`_vectr._tcp` mDNS) → open `http://localhost:4101`
 
-**Phone:** download [`releases/Vectr-debug.apk`](./releases/Vectr-debug.apk) *or* build `cd android/AxonTest && ./gradlew :app:assembleDebug`
+**Phone:** download [`releases/Onyx-debug.apk`](./releases/Onyx-debug.apk) *or* build `cd android/AxonTest && ./gradlew :app:assembleDebug`
 
 **Connect:** same Wi-Fi → auto discovers → if blocked, **Settings → IP:4101 → Save** → `● Connected`
 
@@ -232,7 +232,7 @@ All cards/drawables use `@color/*` — adding a theme is a new `values-night-ole
 ## 📂 Project Layout
 
 ```
-Vectr/
+Onyx/
 ├── server/                # Express + WS
 │   ├── app.js             # routes + static
 │   ├── routes/            # API handlers
@@ -300,8 +300,8 @@ Vectr/
 
 > Only the **latest** APK is kept. Old releases removed by design — always build fresh if you need older.
 
-- **File:** [`releases/Vectr-debug.apk`](./releases/Vectr-debug.apk) — this built APK `11M` (`Aug 22 13:38` build) — download → sideload (enable *Install unknown apps* for your browser/file manager)
-- Alt: GitHub view → `releases/` → click `Vectr-debug.apk` → *Download* → sideload
+- **File:** [`releases/Onyx-debug.apk`](./releases/Onyx-debug.apk) — this built APK `11M` (`Aug 22 13:38` build) — download → sideload (enable *Install unknown apps* for your browser/file manager)
+- Alt: GitHub view → `releases/` → click `Onyx-debug.apk` → *Download* → sideload
 - No installer scripts — just the APK
 
 ### B — Desktop Core (build & run)
@@ -309,7 +309,7 @@ Vectr/
 **Linux:**
 
 ```bash
-git clone https://github.com/NRS-1605/Vectr && cd Vectr
+git clone https://github.com/NRS-1605/OnYx && cd Onyx
 npm install
 cp .env.example .env   # optional: add LLM / Whisper overrides
 npm start              # → prints VeCTR address http://192.168.x.x:4101 and _vectr._tcp
@@ -320,7 +320,7 @@ npm start              # → prints VeCTR address http://192.168.x.x:4101 and _v
 **Windows (PowerShell):**
 
 ```powershell
-git clone https://github.com/NRS-1605/Vectr; cd Vectr
+git clone https://github.com/NRS-1605/OnYx; cd Onyx
 npm install
 copy .env.example .env   # optional
 npm start                # allow firewall Private when prompted

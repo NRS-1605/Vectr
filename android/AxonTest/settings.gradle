@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Vectr"
+rootProject.name = "Onyx"
 include(":app")
