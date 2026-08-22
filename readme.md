@@ -46,34 +46,6 @@
 
 > **Onyx pairs an Android companion app with a self-hosted desktop core (Node.js).** The phone becomes a remote for the laptop — touchpad, macros, files, clipboard, captures, todo, inventory, lectures — and stays in sync even when offline.
 
-<details>
-<summary><b>✨ Tap to see what it feels like</b></summary>
-<br>
-
-<p align="center">
-  <img src="android/AxonTest/app/src/main/res/drawable-nodpi/vectr_gradient.png" width="100%" style="border-radius:16px; max-width:800px;" alt="Onyx gradient" />
-</p>
-
-```
-  ●  FOCUS SESSION  25:00          ◀ swipe for day ▶
-  08 AM  ──  Deep Work: Onyx polish
-  09 AM  ──  Lecture: OS Threads
-  12 AM  ──  MADE BY ILLUMINATI.PY  // monospace, faint
-```
-
-*Paper texture in light • Greyish charcoal in dark • White halftone dots • SchedWall as live wallpaper on desktop.*
-
-</details>
-
----
-
-## 🧭 Navigation
-
-- **Home** — `Your Command Hub` hero above cards, last tile is **SchedWall**, footer `MADE BY ILLUMINATI.PY`
-- **Tap any card** — slides + fades (`56dp` + `scale 0.98` → `300ms Decelerate`) — back to Home slides opposite
-
----
-
 ## ⚡ Quick Start
 
 > No install scripts — you build & run it. Latest APK only in [`releases/`](./releases). Full requirements + steps at the **bottom** → [📋 Requirements](#-requirements) & [🚀 How to Install & Run](#-how-to-install--run).
