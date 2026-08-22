@@ -76,49 +76,13 @@
 
 ## ⚡ Quick Start
 
-### 1 — Desktop Core
+> No install scripts — you build & run it. Latest APK only in [`releases/`](./releases). Full requirements + steps at the **bottom** → [📋 Requirements](#-requirements) & [🚀 How to Install & Run](#-how-to-install--run).
 
-**Requires:** Node.js 18+ (LTS)
+**Desktop:** `git clone && npm install && npm start` → prints `VeCTR address` `http://<ip>:4101` (`_vectr._tcp` mDNS) → open `http://localhost:4101`
 
-```bash
-git clone https://github.com/NRS-1605/Vectr && cd Vectr
-npm install
-cp .env.example .env        # optional: LLM keys
-npm start
-```
+**Phone:** download [`releases/Vectr-debug.apk`](./releases/Vectr-debug.apk) *or* build `cd android/AxonTest && ./gradlew :app:assembleDebug`
 
-Server prints `VeCTR address` URLs (e.g. `http://192.168.1.42:4101`) and advertises `_vectr._tcp` via mDNS.
-
-Open `http://localhost:4101` for the admin console.
-
-| Script | Command | Use |
-|--------|---------|-----|
-| `npm start` | `node server/app.js` | Production |
-| `npm run dev` | `nodemon server/app.js` | Dev + auto-reload |
-
-> **Windows:** Allow Node.js through *Windows Defender Firewall → Private networks*.
-
-### 2 — Android App
-
-**Option A — APK**
-
-Download from [releases](https://github.com/NRS-1605/Vectr/raw/main/releases/Vectr-debug.apk) and sideload.
-
-**Option B — Build**
-
-```bash
-cd android/AxonTest
-./gradlew :app:assembleDebug
-# APK at: app/build/outputs/apk/debug/app-debug.apk
-```
-
-### 3 — Connect
-
-1. Same Wi-Fi for phone + laptop
-2. App discovers core via mDNS automatically
-3. If blocked → **Settings** → enter `IP:4101` → **Save**
-
-Home shows `● Connected` (coral) when paired.
+**Connect:** same Wi-Fi → auto discovers → if blocked, **Settings → IP:4101 → Save** → `● Connected`
 
 ---
 
@@ -315,6 +279,117 @@ Vectr/
 ├── SchedWall/views/       # admin.html · wallpaper.html (grid blueprint)
 └── shared/message-contract.js
 ```
+
+---
+
+## 📋 Requirements
+
+> Build required — no install scripts. One recent APK kept in [`releases/`](./releases). Clone, install deps, run.
+
+### Linux
+
+**System:**
+- `git`, `curl`/`wget`
+- **Node.js 18+ LTS** + `npm` — https://nodejs.org — check `node -v` / `npm -v`
+- `build-essential` / `python3` only if `sharp` / `whisper.cpp` rebuilds native deps (usually not needed for core)
+
+**For Touchpad / Clipboard / Voice:**
+- Touchpad: `ydotool` + `ydotoold` (auto-spawned) — `sudo apt install ydotool` — needs `/dev/uinput` access (`sudo usermod -aG input $USER` + relogin, or `sudo chmod 666 /dev/uinput` for test)
+- Clipboard: `wl-clipboard` (Wayland) — `sudo apt install wl-clipboard` — or `xclip`/`xsel` for X11
+- Voice (optional): [`whisper.cpp`](https://github.com/ggerganov/whisper.cpp) — `~/whisper.cpp/build/bin/whisper-cli` + `models/ggml-small.bin` — override `WHISPER_BINARY` / `WHISPER_MODEL` in `.env`
+
+**Android build (on Linux):**
+- JDK 17 — `sudo apt install openjdk-17-jdk` — `java -version`
+- Android SDK / Android Studio — `ANDROID_HOME` set, or use Studio’s embedded SDK
+- `./gradlew` uses Gradle wrapper — no global Gradle needed
+
+### Windows
+
+**System:**
+- `git` — https://git-scm.com
+- **Node.js 18+ LTS** + `npm` — https://nodejs.org
+- PowerShell 5+ (preinstalled)
+
+**For Touchpad / Clipboard:**
+- No extra daemon — uses `user32.dll` via PowerShell
+- Clipboard: `Get-Clipboard` / `Set-Clipboard` (PowerShell)
+- **Firewall:** first `npm start` → Windows Defender Firewall → *Allow Node.js on Private networks* (or manually allow `node.exe` on port `4101`)
+
+**Android build (on Windows):**
+- JDK 17 — https://adoptium.net
+- Android Studio — https://developer.android.com/studio
+- Same `./gradlew.bat :app:assembleDebug` (use `gradlew.bat`)
+
+---
+
+## 🚀 How to Install & Run
+
+### A — Phone APK (in `releases/`)
+
+> Only the **latest** APK is kept. Old releases removed by design — always build fresh if you need older.
+
+- **File:** [`releases/Vectr-debug.apk`](./releases/Vectr-debug.apk) — this built APK `11M` (`Aug 22 13:38` build) — download → sideload (enable *Install unknown apps* for your browser/file manager)
+- Alt: GitHub view → `releases/` → click `Vectr-debug.apk` → *Download* → sideload
+- No installer scripts — just the APK
+
+### B — Desktop Core (build & run)
+
+**Linux:**
+
+```bash
+git clone https://github.com/NRS-1605/Vectr && cd Vectr
+npm install
+cp .env.example .env   # optional: add LLM / Whisper overrides
+npm start              # → prints VeCTR address http://192.168.x.x:4101 and _vectr._tcp
+# dev: npm run dev     # nodemon
+# open http://localhost:4101 for admin console
+```
+
+**Windows (PowerShell):**
+
+```powershell
+git clone https://github.com/NRS-1605/Vectr; cd Vectr
+npm install
+copy .env.example .env   # optional
+npm start                # allow firewall Private when prompted
+# open http://localhost:4101
+```
+
+| Script | Command | Use |
+|--------|---------|-----|
+| `npm start` | `node server/app.js` | Production |
+| `npm run dev` | `nodemon server/app.js` | Dev + auto-reload |
+
+### C — Connect Phone → Laptop
+
+1. Same Wi-Fi for both
+2. Open **Onyx** → auto-discovers core via mDNS
+3. If blocked (some routers block mDNS) → **Settings** → enter `IP` from server log + port `4101` → **Save**
+4. Home shows `● Connected` (coral) when paired; `● Disconnected` otherwise
+
+### D — Build APK Yourself (optional, instead of releases)
+
+```bash
+# Linux / macOS
+cd android/AxonTest
+./gradlew :app:assembleDebug
+# → app/build/outputs/apk/debug/app-debug.apk  → copy to releases/ if you want to share
+
+# Windows
+cd android\AxonTest
+.\gradlew.bat :app:assembleDebug
+# → app\build\outputs\apk\debug\app-debug.apk
+```
+
+Open project in Android Studio for development.
+
+### E — Working Flow
+
+1. **Phone builds APK** *or* sideloads from `releases/` → install
+2. **Laptop `npm start`** → core up on `:4101`
+3. **Same LAN** → phone discovers → `● Connected`
+4. Use modules: Touchpad / Macros / Capture / Space fuzzy search / SchedWall wallpaper (`SchedWall/views/wallpaper.html` on laptop + 8am-12am swipe on phone) / Pomodoro hour+minute pickers / etc.
+5. To update: `git pull && npm install` on laptop, rebuild APK on phone side if needed — `releases/` always holds only the newest APK
 
 ---
 
